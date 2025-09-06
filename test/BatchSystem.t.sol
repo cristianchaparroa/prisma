@@ -43,29 +43,18 @@ contract BatchSystemTest is Test, SimpleDeployers {
 
         // Deploy hook
         uint160 flags = uint160(
-            Hooks.AFTER_INITIALIZE_FLAG |
-            Hooks.AFTER_ADD_LIQUIDITY_FLAG |
-            Hooks.AFTER_REMOVE_LIQUIDITY_FLAG |
-            Hooks.AFTER_SWAP_FLAG
+            Hooks.AFTER_INITIALIZE_FLAG | Hooks.AFTER_ADD_LIQUIDITY_FLAG | Hooks.AFTER_REMOVE_LIQUIDITY_FLAG
+                | Hooks.AFTER_SWAP_FLAG
         );
 
         bytes memory constructorArgs = abi.encode(poolManager);
-        address hookAddress = deployHookToProperAddress(
-            "YieldMaximizerHook.sol:YieldMaximizerHook",
-            constructorArgs,
-            flags
-        );
+        address hookAddress =
+            deployHookToProperAddress("YieldMaximizerHook.sol:YieldMaximizerHook", constructorArgs, flags);
         hook = YieldMaximizerHook(hookAddress);
 
         // Create pool
-        (poolKey, poolId) = createPool(
-            currency0,
-            currency1,
-            IHooks(address(hook)),
-            FEE,
-            TICK_SPACING,
-            TestConstants.SQRT_PRICE_1_1
-        );
+        (poolKey, poolId) =
+            createPool(currency0, currency1, IHooks(address(hook)), FEE, TICK_SPACING, TestConstants.SQRT_PRICE_1_1);
 
         // Setup multiple test users for batch testing
         _setupMultipleUsers();
