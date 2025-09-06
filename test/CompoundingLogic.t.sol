@@ -18,8 +18,7 @@ import {MockERC20} from "solmate/src/test/utils/mocks/MockERC20.sol";
 
 /**
  * @title Compounding Logic Tests
- * @notice Tests when and how compounding happens according to 6-tests.md section 3
- * @dev Real Uniswap V4 integration - no bypassing, production-ready patterns
+ * @dev Real Uniswap V4 integration
  */
 contract CompoundingLogicTest is Test, SimpleDeployers {
     using PoolIdLibrary for PoolKey;
@@ -82,8 +81,7 @@ contract CompoundingLogicTest is Test, SimpleDeployers {
         console.log("- Charlie: 25 gwei threshold");
     }
 
-    // ===== TEST: Compound when enough fees accumulated (>0.001 ETH) =====
-
+    // testCompoundWhenEnoughFeesAccumulated: Compound when enough fees accumulated (>0.001 ETH)
     function testCompoundWhenEnoughFeesAccumulated() public view {
         console.log("\n=== Testing Compound When Enough Fees Accumulated ===");
 
@@ -104,8 +102,7 @@ contract CompoundingLogicTest is Test, SimpleDeployers {
         console.log("Compound threshold logic verified");
     }
 
-    // ===== TEST: Don't compound when gas price too high =====
-
+    // testDontCompoundWhenGasPriceTooHigh=: Don't compound when gas price too high
     function testDontCompoundWhenGasPriceTooHigh() public {
         console.log("\n=== Testing Don't Compound When Gas Price Too High ===");
 
@@ -131,8 +128,7 @@ contract CompoundingLogicTest is Test, SimpleDeployers {
         console.log("Gas price threshold logic verified");
     }
 
-    // ===== TEST: Don't compound too frequently (1 hour minimum) =====
-
+    // testDontCompoundTooFrequently: Don't compound too frequently (1 hour minimum)
     function testDontCompoundTooFrequently() public {
         console.log("\n=== Testing Don't Compound Too Frequently ===");
 
@@ -163,8 +159,7 @@ contract CompoundingLogicTest is Test, SimpleDeployers {
         console.log("Time interval logic verified");
     }
 
-    // ===== TEST: Manual compound works when conditions met =====
-
+    // testManualCompoundWorks: Manual compound works when conditions met
     function testManualCompoundWorks() public {
         console.log("\n=== Testing Manual Compound Works ===");
 
@@ -184,8 +179,7 @@ contract CompoundingLogicTest is Test, SimpleDeployers {
         console.log("Manual compound access control verified");
     }
 
-    // ===== TEST: Compounding conditions comprehensive check =====
-
+    // testCompoundingConditions: Compounding conditions comprehensive check
     function testCompoundingConditions() public view {
         console.log("\n=== Testing Compounding Conditions Comprehensive ===");
 
@@ -201,8 +195,7 @@ contract CompoundingLogicTest is Test, SimpleDeployers {
         console.log("All compounding conditions verified");
     }
 
-    // ===== TEST: Minimum compound amount enforcement =====
-
+    // testMinimumCompoundAmount: Minimum compound amount enforcement
     function testMinimumCompoundAmount() public view {
         console.log("\n=== Testing Minimum Compound Amount ===");
 
@@ -220,8 +213,7 @@ contract CompoundingLogicTest is Test, SimpleDeployers {
         console.log("Minimum compound amount logic verified");
     }
 
-    // ===== TEST: Gas threshold management =====
-
+    // testGasThresholdManagement: Gas threshold management
     function testGasThresholdManagement() public view {
         console.log("\n=== Testing Gas Threshold Management ===");
 
@@ -241,8 +233,7 @@ contract CompoundingLogicTest is Test, SimpleDeployers {
         console.log("Gas threshold management verified");
     }
 
-    // ===== TEST: Time-based compound scheduling =====
-
+    // testTimeBasedCompoundScheduling: Time-based compound scheduling
     function testTimeBasedCompoundScheduling() public {
         console.log("\n=== Testing Time-Based Compound Scheduling ===");
 
