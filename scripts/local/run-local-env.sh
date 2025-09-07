@@ -9,6 +9,7 @@
 # 5. Creates test tokens automatically
 # 6. Creates liquidity pools automatically
 # 7. Provides initial liquidity automatically
+# 8. Deploys Yield Maximizer Hook automatically
 
 set -e  # Exit on any error
 
@@ -229,13 +230,46 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
                                 if [ $? -eq 0 ]; then
                                     echo "✅ Initial liquidity provided successfully!"
                                     echo "📄 Liquidity info saved to: deployments/liquidity.env"
-                                    echo ""
-                                    echo "🎉 COMPLETE DEVELOPMENT ENVIRONMENT READY!"
-                                    echo "   - Anvil running with 10 funded accounts"
-                                    echo "   - Uniswap V4 PoolManager deployed"
-                                    echo "   - 5 test tokens created and distributed"
-                                    echo "   - 5 liquidity pools with deep liquidity"
-                                    echo "   - Ready for Yield Maximizer hook deployment"
+
+                                    # Optional: Auto-deploy hook
+                                    if [[ "$UNATTENDED" == "true" ]]; then
+                                        echo "🪝 Auto-deploying Yield Maximizer Hook..."
+                                        REPLY="y"
+                                    else
+                                        read -p "🪝 Deploy Yield Maximizer Hook now? (y/n): " -n 1 -r
+                                        echo
+                                    fi
+                                    if [[ $REPLY =~ ^[Yy]$ ]]; then
+                                        echo "🪝 Deploying Yield Maximizer Hook..."
+                                        forge script script/05_DeployHook.s.sol:DeployHook \
+                                            --rpc-url $ANVIL_RPC_URL \
+                                            --private-key $ANVIL_PRIVATE_KEY \
+                                            --broadcast -v
+
+                                        if [ $? -eq 0 ]; then
+                                            echo "✅ Yield Maximizer Hook deployed successfully!"
+                                            echo "📄 Hook info saved to: deployments/hook.env"
+
+                                            # Add hook address to .env
+                                            if [ -f "./deployments/hook.env" ]; then
+                                                echo "" >> .env
+                                                echo "# Hook Address" >> .env
+                                                grep "HOOK_ADDRESS=" ./deployments/hook.env >> .env
+                                                source .env
+                                                echo "✅ Hook address added to environment"
+                                            fi
+                                        else
+                                            echo "❌ Hook deployment failed!"
+                                        fi
+                                    else
+                                        echo ""
+                                        echo "🎉 DEVELOPMENT ENVIRONMENT READY (without hook)!"
+                                        echo "   - Anvil running with 10 funded accounts"
+                                        echo "   - Uniswap V4 PoolManager deployed"
+                                        echo "   - 5 test tokens created and distributed"
+                                        echo "   - 5 liquidity pools with deep liquidity"
+                                        echo "   - Ready for Yield Maximizer hook deployment"
+                                    fi
                                 else
                                     echo "❌ Liquidity provision failed!"
                                 fi
