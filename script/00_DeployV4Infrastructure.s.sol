@@ -19,41 +19,47 @@ contract DeployV4Infrastructure is Script {
 
     // Deployment addresses (will be populated during deployment)
     IPoolManager public poolManager;
-    
+
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("ANVIL_PRIVATE_KEY");
-        
+
         vm.startBroadcast(deployerPrivateKey);
-        
+
         console.log("Deploying Uniswap V4 Infrastructure...");
         console.log("Deployer:", vm.addr(deployerPrivateKey));
         console.log("Chain ID:", block.chainid);
-        
+
         // Deploy PoolManager - the core of Uniswap V4
         poolManager = new PoolManager(vm.addr(deployerPrivateKey));
-        
+
         console.log("PoolManager deployed at:", address(poolManager));
-        
+
         // Verify deployment
         require(address(poolManager) != address(0), "PoolManager deployment failed");
-        
+
         console.log("\n=== UNISWAP V4 INFRASTRUCTURE DEPLOYED ===");
         console.log("PoolManager:", address(poolManager));
         console.log("Ready for hook integration!");
-        
+
         vm.stopBroadcast();
-        
+
         // Save deployment info to file for other scripts
         _saveDeploymentInfo();
     }
-    
+
     function _saveDeploymentInfo() internal {
         string memory deploymentInfo = string.concat(
-            "POOL_MANAGER=", vm.toString(address(poolManager)), "\n",
-            "DEPLOYER=", vm.toString(vm.addr(vm.envUint("ANVIL_PRIVATE_KEY"))), "\n",
-            "CHAIN_ID=", vm.toString(block.chainid), "\n"
+            "POOL_MANAGER=",
+            vm.toString(address(poolManager)),
+            "\n",
+            "DEPLOYER=",
+            vm.toString(vm.addr(vm.envUint("ANVIL_PRIVATE_KEY"))),
+            "\n",
+            "CHAIN_ID=",
+            vm.toString(block.chainid),
+            "\n"
         );
-        
+
         vm.writeFile("./deployments/v4-infrastructure.env", deploymentInfo);
         console.log("Deployment info saved to: ./deployments/v4-infrastructure.env");
     }
