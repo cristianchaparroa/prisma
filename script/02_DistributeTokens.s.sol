@@ -93,19 +93,28 @@ contract DistributeTokens is Script {
         _saveDistributionInfo();
     }
 
-    function _loadTokenContracts() internal pure {
+    function _loadTokenContracts() internal {
         console.log("Loading token contracts from deployment addresses...");
 
-        // Note: You need to manually set these in .env after running 01_CreateTokens.s.sol
-        // Or run setTokenAddresses() with the deployed addresses
+        // Load token addresses from environment variables
+        address wethAddress = vm.envAddress("TOKEN_WETH");
+        address usdcAddress = vm.envAddress("TOKEN_USDC");
+        address daiAddress = vm.envAddress("TOKEN_DAI");
+        address wbtcAddress = vm.envAddress("TOKEN_WBTC");
+        address yieldAddress = vm.envAddress("TOKEN_YIELD");
 
-        console.log("Token addresses need to be set manually for now");
-        console.log("After running 01_CreateTokens.s.sol, copy the addresses and either:");
-        console.log("1. Add them to .env file as WETH_ADDRESS=0x..., etc.");
-        console.log("2. Call setTokenAddresses() with the deployed addresses");
+        weth = MockERC20(wethAddress);
+        usdc = MockERC20(usdcAddress);
+        dai = MockERC20(daiAddress);
+        wbtc = MockERC20(wbtcAddress);
+        yieldToken = MockERC20(yieldAddress);
 
-        // For now, we'll expect these to be set in environment
-        // In a complete implementation, you'd parse the deployments/tokens.env file
+        console.log("Loaded token contracts:");
+        console.log("  WETH:", wethAddress);
+        console.log("  USDC:", usdcAddress);
+        console.log("  DAI:", daiAddress);
+        console.log("  WBTC:", wbtcAddress);
+        console.log("  YIELD:", yieldAddress);
     }
 
     function _loadTestAccounts() internal {
