@@ -16,3 +16,4 @@ docs/
 .accounts.json
 anvil_output.log
 deployments
+accounts.json

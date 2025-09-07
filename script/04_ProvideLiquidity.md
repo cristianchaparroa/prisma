@@ -77,12 +77,13 @@ function _calculateTokenAmounts(PoolConfig memory config)
 
 ### Successful Execution Logs
 ```
-Providing liquidity using PositionManager...
+Providing liquidity to hook-enabled pools using PositionManager...
 Loading contracts from environment variables...
 PoolManager loaded: 0x5FbDB2315678afecb367f032d93F642f64180aa3
 PositionManager loaded: 0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9
+YieldMaximizerHook loaded: 0x429051c72d815C038aE8D6442dAe87DD6d255540
 All contracts loaded successfully
-Providing liquidity to all pools...
+Providing liquidity to all hook-enabled pools...
 
 Providing liquidity to pool: WETH/USDC
   Tick range: -600 to 600
@@ -115,11 +116,3 @@ Liquidity provided successfully
 - Environment ready for **hook deployment**
 - **NFT positions** can be managed/modified
 - Ready for **yield optimization strategies**
-
-## Related Files
-
-- **Infrastructure**: `00_DeployV4Infrastructure.s.sol`
-- **Pool Creation**: `03_CreatePools.s.sol`  
-- **SimplePermit2**: `script/mocks/SimplePermit2.sol`
-
----

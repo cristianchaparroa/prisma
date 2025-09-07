@@ -5,9 +5,15 @@ Distributes the created test tokens (WETH, USDC, DAI, WBTC, YIELD) to multiple t
 
 ## Prerequisites
 
-1. **Tokens already created**:
+1. **Complete environment set up** (recommended via automated pipeline):
 ```bash
-# Should be done via run-local-env.sh or manually:
+# Should be done via run-local-env.sh:
+./scripts/local/run-local-env.sh -y
+```
+
+OR manually ensure all previous steps are complete:
+```bash
+# 1. Infrastructure, 2. Tokens, 3. Hook, 4. Pools, 5. Liquidity
 forge script script/01_CreateTokens.s.sol:CreateTokens --rpc-url $ANVIL_RPC_URL --private-key $ANVIL_PRIVATE_KEY --broadcast -v
 ```
 
@@ -29,7 +35,7 @@ TOKEN_YIELD=0x...
 ## Execute Token Distribution
 
 ```bash
-forge script script/02_DistributeTokens.s.sol:DistributeTokens \
+forge script script/05_DistributeTokens.s.sol:DistributeTokens \
     --rpc-url $ANVIL_RPC_URL \
     --private-key $ANVIL_PRIVATE_KEY \
     --broadcast -v
@@ -140,36 +146,28 @@ setTokenAddresses(
 - **Liquidity**: $1M+ equivalent  
 - **Use**: High-volume gas optimization testing
 
+## When to Run This Script
+
+This script is **optional** and typically run **after** the complete development environment is set up:
+
+1. ✅ **Infrastructure deployed** (script/00)
+2. ✅ **Tokens created** (script/01)
+3. ✅ **Hook deployed** (script/02)
+4. ✅ **Hook-enabled pools created** (script/03)
+5. ✅ **Liquidity provided** (script/04)
+6. **🎯 Now distribute tokens** for additional testing
+
 ## Next Steps
 
 After successful distribution:
 
-1. **Create liquidity pools**:
-```bash
-forge script script/03_CreatePools.s.sol:CreatePools --rpc-url $ANVIL_RPC_URL --private-key $ANVIL_PRIVATE_KEY --broadcast -v
-```
+1. **Test multi-user scenarios** with different account sizes
 
-2. **Test user interactions** with different account sizes
+2. **Verify auto-compounding** with realistic user scenarios
 
-3. **Verify auto-compounding** with realistic user scenarios
+3. **Test hook functionality** from multiple user perspectives
 
-## Troubleshooting
-
-**Error: "Token addresses need to be set manually"**
-- Run `./scripts/local/run-local-env.sh` to auto-generate addresses
-- Or manually add TOKEN_* addresses to your .env file
-
-**Error: "Account not found"**
-- Verify `.env` contains ACCOUNT_N_ADDRESS variables
-- Check that Anvil is running with sufficient accounts
-
-**Transfer fails with "insufficient balance"**
-- Ensure deployer (Account 0) has enough tokens
-- Verify tokens were created successfully in previous step
-
-**Script can't find deployments/tokens.env**
-- Run token creation script first
-- Check file permissions on deployments folder
+4. **Simulate trading** between accounts with different balances
 
 ## Distribution Summary
 
@@ -186,7 +184,3 @@ Remaining with deployer for:
 - Additional testing scenarios
 - Emergency operations
 ```
-
----
-
-*Ready to create pools and test the complete yield maximizer ecosystem!*

@@ -74,33 +74,6 @@ All initial supply goes to the deployer (Account 0), ready for:
 - Distribution to test accounts
 - Pool creation
 
-## Next Steps
-
-After successful token creation:
-
-1. **Distribute tokens** to test accounts:
-```bash
-forge script script/02_DistributeTokens.s.sol --rpc-url $ANVIL_RPC_URL --private-key $ANVIL_PRIVATE_KEY --broadcast -v
-```
-
-2. **Create liquidity pools** with these tokens
-
-3. **Test the yield maximizer** with realistic token amounts
-
-## Troubleshooting
-
-**Script fails with "insufficient funds":**
-- Ensure Anvil is running with funded accounts
-- Check that `ANVIL_PRIVATE_KEY` is set correctly
-
-**Token deployment fails:**
-- Verify Solidity version (0.8.26) in foundry.toml
-- Check that all dependencies are installed: `forge install`
-
-**File write permission error:**
-- Ensure `fs_permissions` is set in foundry.toml
-- Check that `deployments/` directory exists
-
 ## Token Contract Interface
 
 ```solidity
@@ -121,7 +94,3 @@ interface IERC20Extended {
 - **Per token deployment**: ~800,000 gas
 - **Total deployment**: ~4,000,000 gas
 - **Cost on Anvil**: ~0.004 ETH total
-
----
-
-*Ready to create liquidity pools and start testing the auto-compounder!*

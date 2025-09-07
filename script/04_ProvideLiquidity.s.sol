@@ -13,8 +13,8 @@ import {MockERC20} from "./01_CreateTokens.s.sol";
 import {IERC20} from "forge-std/interfaces/IERC20.sol";
 
 /**
- * @title Provide Liquidity using PositionManager
- * @notice Adds liquidity to pools using PositionManager.
+ * @title Provide Liquidity to Hook-Enabled Pools
+ * @notice Adds liquidity to hook-enabled pools using PositionManager
  */
 contract ProvideLiquidity is Script {
     using PoolIdLibrary for PoolKey;
@@ -23,6 +23,7 @@ contract ProvideLiquidity is Script {
     // Core contracts
     IPoolManager public poolManager;
     IPositionManager public positionManager;
+    IHooks public hook;
 
     // Token contracts
     MockERC20 public weth;
@@ -65,9 +66,11 @@ contract ProvideLiquidity is Script {
         // Load core contracts
         poolManager = IPoolManager(vm.envAddress("POOL_MANAGER"));
         positionManager = IPositionManager(vm.envAddress("POSITION_MANAGER"));
+        hook = IHooks(vm.envAddress("HOOK_ADDRESS"));
 
         console.log("PoolManager loaded:", address(poolManager));
         console.log("PositionManager loaded:", address(positionManager));
+        console.log("YieldMaximizerHook loaded:", address(hook));
 
         // Load tokens
         weth = MockERC20(vm.envAddress("TOKEN_WETH"));
@@ -155,13 +158,13 @@ contract ProvideLiquidity is Script {
     function _provideLiquidityToPool(PoolConfig memory config) internal {
         console.log("\nProviding liquidity to pool:", config.name);
 
-        // Create PoolKey
+        // Create PoolKey with hook
         PoolKey memory poolKey = PoolKey({
             currency0: config.currency0,
             currency1: config.currency1,
             fee: config.fee,
             tickSpacing: config.tickSpacing,
-            hooks: IHooks(address(0))
+            hooks: hook
         });
 
         // Calculate tick range

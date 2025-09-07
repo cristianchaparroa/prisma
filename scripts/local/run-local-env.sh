@@ -7,9 +7,9 @@
 # 3. Sources the .env file
 # 4. Deploys infrastructure automatically
 # 5. Creates test tokens automatically
-# 6. Creates liquidity pools automatically
-# 7. Provides initial liquidity automatically
-# 8. Deploys Yield Maximizer Hook automatically
+# 6. Deploys Yield Maximizer Hook automatically
+# 7. Creates hook-enabled liquidity pools automatically
+# 8. Provides initial liquidity to hook-enabled pools automatically
 
 set -e  # Exit on any error
 
@@ -193,90 +193,100 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
                     source .env
                     echo "✅ Token addresses added to environment"
 
-                    # Optional: Auto-create pools
+                    # Optional: Auto-deploy hook
                     if [[ "$UNATTENDED" == "true" ]]; then
-                        echo "🏊 Auto-creating liquidity pools..."
+                        echo "🪝 Auto-deploying Yield Maximizer Hook..."
                         REPLY="y"
                     else
-                        read -p "🏊 Create liquidity pools now? (y/n): " -n 1 -r
+                        read -p "🪝 Deploy Yield Maximizer Hook now? (y/n): " -n 1 -r
                         echo
                     fi
                     if [[ $REPLY =~ ^[Yy]$ ]]; then
-                        echo "🏊 Creating liquidity pools (WETH/USDC, WETH/DAI, WBTC/WETH, USDC/DAI, YIELD/WETH)..."
-                        forge script script/03_CreatePools.s.sol:CreatePools \
+                        echo "🪝 Deploying Yield Maximizer Hook..."
+                        forge script script/02_DeployHook.s.sol:DeployHook \
                             --rpc-url $ANVIL_RPC_URL \
                             --private-key $ANVIL_PRIVATE_KEY \
                             --broadcast -v
 
                         if [ $? -eq 0 ]; then
-                            echo "✅ Liquidity pools created successfully!"
-                            echo "📄 Pool info saved to: deployments/pools.env"
+                            echo "✅ Yield Maximizer Hook deployed successfully!"
+                            echo "📄 Hook info saved to: deployments/hook.env"
 
-                            # Optional: Auto-provide liquidity
+                            # Add hook address to .env
+                            if [ -f "./deployments/hook.env" ]; then
+                                echo "" >> .env
+                                echo "# Hook Address" >> .env
+                                grep "HOOK_ADDRESS=" ./deployments/hook.env >> .env
+                                source .env
+                                echo "✅ Hook address added to environment"
+                            fi
+
+                            # Optional: Auto-create hook-enabled pools
                             if [[ "$UNATTENDED" == "true" ]]; then
-                                echo "💧 Auto-providing initial liquidity..."
+                                echo "🏊 Auto-creating hook-enabled liquidity pools..."
                                 REPLY="y"
                             else
-                                read -p "💧 Provide initial liquidity to pools now? (y/n): " -n 1 -r
+                                read -p "🏊 Create hook-enabled liquidity pools now? (y/n): " -n 1 -r
                                 echo
                             fi
                             if [[ $REPLY =~ ^[Yy]$ ]]; then
-                                echo "💧 Providing initial liquidity to all pools..."
-                                forge script script/04_ProvideLiquidity.s.sol:ProvideLiquidity \
+                                echo "🏊 Creating hook-enabled liquidity pools (WETH/USDC, WETH/DAI, WBTC/WETH, USDC/DAI, YIELD/WETH)..."
+                                forge script script/03_CreatePools.s.sol:CreatePools \
                                     --rpc-url $ANVIL_RPC_URL \
                                     --private-key $ANVIL_PRIVATE_KEY \
                                     --broadcast -v
 
                                 if [ $? -eq 0 ]; then
-                                    echo "✅ Initial liquidity provided successfully!"
-                                    echo "📄 Liquidity info saved to: deployments/liquidity.env"
+                                    echo "✅ Hook-enabled liquidity pools created successfully!"
+                                    echo "📄 Pool info saved to: deployments/pools.env"
 
-                                    # Optional: Auto-deploy hook
+                                    # Optional: Auto-provide liquidity to hook-enabled pools
                                     if [[ "$UNATTENDED" == "true" ]]; then
-                                        echo "🪝 Auto-deploying Yield Maximizer Hook..."
+                                        echo "💧 Auto-providing initial liquidity..."
                                         REPLY="y"
                                     else
-                                        read -p "🪝 Deploy Yield Maximizer Hook now? (y/n): " -n 1 -r
+                                        read -p "💧 Provide initial liquidity to hook-enabled pools now? (y/n): " -n 1 -r
                                         echo
                                     fi
                                     if [[ $REPLY =~ ^[Yy]$ ]]; then
-                                        echo "🪝 Deploying Yield Maximizer Hook..."
-                                        forge script script/05_DeployHook.s.sol:DeployHook \
+                                        echo "💧 Providing initial liquidity to hook-enabled pools..."
+                                        forge script script/04_ProvideLiquidity.s.sol:ProvideLiquidity \
                                             --rpc-url $ANVIL_RPC_URL \
                                             --private-key $ANVIL_PRIVATE_KEY \
                                             --broadcast -v
 
                                         if [ $? -eq 0 ]; then
-                                            echo "✅ Yield Maximizer Hook deployed successfully!"
-                                            echo "📄 Hook info saved to: deployments/hook.env"
+                                            echo "✅ Initial liquidity provided to hook-enabled pools successfully!"
+                                            echo "📄 Liquidity info saved to: deployments/liquidity.env"
 
-                                            # Add hook address to .env
-                                            if [ -f "./deployments/hook.env" ]; then
-                                                echo "" >> .env
-                                                echo "# Hook Address" >> .env
-                                                grep "HOOK_ADDRESS=" ./deployments/hook.env >> .env
-                                                source .env
-                                                echo "✅ Hook address added to environment"
-                                            fi
+                                            echo ""
+                                            echo "🎉 DEVELOPMENT ENVIRONMENT READY!"
+                                            echo "   - Anvil running with 10 funded accounts"
+                                            echo "   - Uniswap V4 PoolManager deployed"
+                                            echo "   - 5 test tokens created and distributed"
+                                            echo "   - Yield Maximizer Hook deployed and active"
+                                            echo "   - 5 hook-enabled liquidity pools with deep liquidity"
+                                            echo "   - Ready for yield maximization!"
                                         else
-                                            echo "❌ Hook deployment failed!"
+                                            echo "❌ Liquidity provision failed!"
                                         fi
                                     else
                                         echo ""
-                                        echo "🎉 DEVELOPMENT ENVIRONMENT READY (without hook)!"
-                                        echo "   - Anvil running with 10 funded accounts"
-                                        echo "   - Uniswap V4 PoolManager deployed"
-                                        echo "   - 5 test tokens created and distributed"
-                                        echo "   - 5 liquidity pools with deep liquidity"
-                                        echo "   - Ready for Yield Maximizer hook deployment"
+                                        echo "🎉 DEVELOPMENT ENVIRONMENT READY (pools created, liquidity pending)!"
                                     fi
                                 else
-                                    echo "❌ Liquidity provision failed!"
+                                    echo "❌ Hook-enabled pool creation failed!"
                                 fi
+                            else
+                                echo ""
+                                echo "🎉 DEVELOPMENT ENVIRONMENT READY (hook deployed, pools pending)!"
                             fi
                         else
-                            echo "❌ Pool creation failed!"
+                            echo "❌ Hook deployment failed!"
                         fi
+                    else
+                        echo ""
+                        echo "🎉 DEVELOPMENT ENVIRONMENT READY (tokens created, hook pending)!"
                     fi
                 else
                     echo "⚠️  Token addresses file not found"

@@ -1,11 +1,11 @@
-# Create Liquidity Pools Script
+# Create Hook-Enabled Liquidity Pools Script
 
 ## Overview
-Creates 5 Uniswap V4 liquidity pools with different token pairs and fee tiers to test the Yield Maximizer hook across various market scenarios.
+Creates 5 Uniswap V4 liquidity pools with the YieldMaximizerHook integrated from the start, enabling automatic yield maximization across different token pairs and fee tiers.
 
 ## Prerequisites
 
-1. **Infrastructure and tokens deployed**:
+1. **Infrastructure, tokens, and hook deployed**:
 ```bash
 # Should be done via run-local-env.sh or manually:
 ./scripts/local/run-local-env.sh  # Deploys everything automatically
@@ -20,6 +20,7 @@ source .env  # Should contain all addresses
 ```bash
 # Infrastructure
 POOL_MANAGER=0x...
+HOOK_ADDRESS=0x...  # YieldMaximizerHook
 
 # Token addresses  
 TOKEN_WETH=0x...
@@ -65,7 +66,9 @@ forge script script/03_CreatePools.s.sol:CreatePools \
     Currency1: 0x5FC8d32690cc91D4c39d9d3abcBD16989F875707
     Fee: 3000
     Tick Spacing: 60
-    ✅ Pool created with ID: 0x1234...
+    Hook: 0x429051c72d815C038aE8D6442dAe87DD6d255540
+  Hook-enabled pool created with ID: 0x1234...
+    Hook address in pool: 0x429051c72d815C038aE8D6442dAe87DD6d255540
 
   Creating pool: WETH/DAI
     ...
@@ -142,20 +145,20 @@ struct CurrencyPair {
 function _sortCurrencies(Currency A, Currency B) returns (CurrencyPair)
 ```
 
-## Hook Integration Ready
+## Hook Integration
 
-### No Hooks Initially
+### With YieldMaximizerHook
 ```solidity
 PoolKey memory key = PoolKey({
     currency0: config.currency0,
     currency1: config.currency1,
     fee: config.fee,
     tickSpacing: config.tickSpacing,
-    hooks: IHooks(address(0))  // No hook yet
+    hooks: hook  // YieldMaximizerHook integrated from creation
 });
 ```
 
-**Pools are created without hooks initially**. The Yield Maximizer hook will be deployed and integrated in later scripts.
+**Pools are created with YieldMaximizerHook integrated from the start**. This enables automatic yield maximization from the moment liquidity is provided.
 
 ## Use Cases Enabled
 
@@ -179,21 +182,6 @@ PoolKey memory key = PoolKey({
 - **Price discovery** for new protocol tokens
 - **Advanced** yield farming scenarios
 
-## Next Steps
-
-After successful pool creation:
-
-1. **Add initial liquidity**:
-```bash
-forge script script/04_ProvideLiquidity.s.sol:ProvideLiquidity --rpc-url $ANVIL_RPC_URL --private-key $ANVIL_PRIVATE_KEY --broadcast -v
-```
-
-2. **Deploy Yield Maximizer Hook**:
-```bash
-forge script script/05_DeployHook.s.sol:DeployHook --rpc-url $ANVIL_RPC_URL --private-key $ANVIL_PRIVATE_KEY --broadcast -v
-```
-
-3. **Test trading and fee generation**
 
 ## Troubleshooting
 
@@ -201,6 +189,11 @@ forge script script/05_DeployHook.s.sol:DeployHook --rpc-url $ANVIL_RPC_URL --pr
 - Run infrastructure deployment first
 - Check that POOL_MANAGER is in .env file
 - Source .env file: `source .env`
+
+**Error: "HOOK_ADDRESS not found"**
+- Run hook deployment first (script/02_DeployHook.s.sol)
+- Check that HOOK_ADDRESS is in .env file
+- Ensure hook deployment completed successfully
 
 **Error: "TOKEN_WETH not found"**
 - Run token creation first
@@ -238,7 +231,3 @@ POOL_1_ID=0x5678...
 - **Per pool creation**: ~200,000 gas
 - **Total deployment**: ~1,000,000 gas
 - **Cost on Anvil**: ~0.001 ETH total
-
----
-
-*Ready to add liquidity and deploy the Yield Maximizer hook!*
