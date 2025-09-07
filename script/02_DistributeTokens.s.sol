@@ -93,7 +93,7 @@ contract DistributeTokens is Script {
         _saveDistributionInfo();
     }
 
-    function _loadTokenContracts() internal {
+    function _loadTokenContracts() internal pure {
         console.log("Loading token contracts from deployment addresses...");
 
         // Note: You need to manually set these in .env after running 01_CreateTokens.s.sol
@@ -124,7 +124,7 @@ contract DistributeTokens is Script {
             // Account 4 not set, that's ok
         }
 
-        console.log("✅ Loaded", testAccounts.length, "test accounts");
+        console.log("Loaded", testAccounts.length, "test accounts");
         for (uint256 i = 0; i < testAccounts.length; i++) {
             console.log("  Account", i, ":", testAccounts[i]);
         }
