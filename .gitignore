@@ -12,3 +12,5 @@ docs/
 
 # Dotenv file
 .env
+.accounts.json
+anvil_output.log
