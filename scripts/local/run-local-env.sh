@@ -135,117 +135,119 @@ echo "   Primary Account: $ANVIL_ADDRESS"
 echo "   Anvil PID: $ANVIL_PID"
 echo ""
 
-# Auto-deploy infrastructure
-echo "🚀 Deploying Uniswap V4 Infrastructure..."
-echo "📦 Deploying Uniswap V4 Infrastructure..."
+# Step 1: Deploy Infrastructure
+echo "🚀 Step 1: Deploying Uniswap V4 Infrastructure..."
 forge script script/00_DeployV4Infrastructure.s.sol \
     --rpc-url $ANVIL_RPC_URL \
     --private-key $ANVIL_PRIVATE_KEY \
     --broadcast -v
 
-if [ $? -eq 0 ]; then
-    echo "✅ Infrastructure deployed successfully!"
-
-    # Extract PoolManager address and add to .env
-    if [ -f "./deployments/v4-infrastructure.env" ]; then
-        echo "" >> .env
-        echo "# Infrastructure Addresses" >> .env
-        cat ./deployments/v4-infrastructure.env >> .env
-        source .env
-        echo "✅ Infrastructure addresses added to environment"
-    fi
-
-    # Auto-create tokens
-    echo "🪙 Creating test tokens..."
-    echo "🪙 Creating test tokens (WETH, USDC, DAI, WBTC, YIELD)..."
-    forge script script/01_CreateTokens.s.sol:CreateTokens \
-        --rpc-url $ANVIL_RPC_URL \
-        --private-key $ANVIL_PRIVATE_KEY \
-        --broadcast -v
-
-    if [ $? -eq 0 ]; then
-        echo "✅ Test tokens created successfully!"
-        echo "📄 Token addresses saved to: deployments/tokens.env"
-
-        # Extract token addresses and add to .env
-        echo "📝 Adding token addresses to .env file..."
-        if [ -f "./deployments/tokens.env" ]; then
-            echo "" >> .env
-            echo "# Token Addresses" >> .env
-            cat ./deployments/tokens.env | sed 's/^/TOKEN_/' >> .env
-            source .env
-            echo "✅ Token addresses added to environment"
-
-            # Auto-deploy hook
-            echo "🪝 Deploying Yield Maximizer Hook..."
-            echo "🪝 Deploying Yield Maximizer Hook..."
-            forge script script/02_DeployHook.s.sol:DeployHook \
-                --rpc-url $ANVIL_RPC_URL \
-                --private-key $ANVIL_PRIVATE_KEY \
-                --broadcast -v
-
-            if [ $? -eq 0 ]; then
-                echo "✅ Yield Maximizer Hook deployed successfully!"
-                echo "📄 Hook info saved to: deployments/hook.env"
-
-                # Add hook address to .env
-                if [ -f "./deployments/hook.env" ]; then
-                    echo "" >> .env
-                    echo "# Hook Address" >> .env
-                    grep "HOOK_ADDRESS=" ./deployments/hook.env >> .env
-                    source .env
-                    echo "✅ Hook address added to environment"
-                fi
-
-                # Auto-create hook-enabled pools
-                echo "🏊 Creating hook-enabled liquidity pools..."
-                echo "🏊 Creating hook-enabled liquidity pools (WETH/USDC, WETH/DAI, WBTC/WETH, USDC/DAI, YIELD/WETH)..."
-                forge script script/03_CreatePools.s.sol:CreatePools \
-                    --rpc-url $ANVIL_RPC_URL \
-                    --private-key $ANVIL_PRIVATE_KEY \
-                    --broadcast -v
-
-                if [ $? -eq 0 ]; then
-                    echo "✅ Hook-enabled liquidity pools created successfully!"
-                    echo "📄 Pool info saved to: deployments/pools.env"
-
-                    # Auto-provide liquidity to hook-enabled pools
-                    echo "💧 Providing initial liquidity to hook-enabled pools..."
-                    forge script script/04_ProvideLiquidity.s.sol:ProvideLiquidity \
-                        --rpc-url $ANVIL_RPC_URL \
-                        --private-key $ANVIL_PRIVATE_KEY \
-                        --broadcast -v
-
-                    if [ $? -eq 0 ]; then
-                        echo "✅ Initial liquidity provided to hook-enabled pools successfully!"
-                        echo "📄 Liquidity info saved to: deployments/liquidity.env"
-
-                        echo ""
-                        echo "🎉 DEVELOPMENT ENVIRONMENT READY!"
-                        echo "   - Anvil running with 10 funded accounts"
-                        echo "   - Uniswap V4 PoolManager deployed"
-                        echo "   - 5 test tokens created and distributed"
-                        echo "   - Yield Maximizer Hook deployed and active"
-                        echo "   - 5 hook-enabled liquidity pools with deep liquidity"
-                        echo "   - Ready for yield maximization!"
-                    else
-                        echo "❌ Liquidity provision failed!"
-                    fi
-                else
-                    echo "❌ Hook-enabled pool creation failed!"
-                fi
-            else
-                echo "❌ Hook deployment failed!"
-            fi
-        else
-            echo "⚠️  Token addresses file not found"
-        fi
-    else
-        echo "❌ Token creation failed!"
-    fi
-else
+if [ $? -ne 0 ]; then
     echo "❌ Infrastructure deployment failed!"
+    exit 1
 fi
+
+echo "✅ Infrastructure deployed successfully!"
+
+# Extract PoolManager address and add to .env
+if [ -f "./deployments/v4-infrastructure.env" ]; then
+    echo "" >> .env
+    echo "# Infrastructure Addresses" >> .env
+    cat ./deployments/v4-infrastructure.env >> .env
+    source .env
+    echo "✅ Infrastructure addresses added to environment"
+fi
+
+# Step 2: Create Tokens
+echo "🪙 Step 2: Creating test tokens (WETH, USDC, DAI, WBTC, YIELD)..."
+forge script script/01_CreateTokens.s.sol:CreateTokens \
+    --rpc-url $ANVIL_RPC_URL \
+    --private-key $ANVIL_PRIVATE_KEY \
+    --broadcast -v
+
+if [ $? -ne 0 ]; then
+    echo "❌ Token creation failed!"
+    exit 1
+fi
+
+echo "✅ Test tokens created successfully!"
+echo "📄 Token addresses saved to: deployments/tokens.env"
+
+# Extract token addresses and add to .env
+echo "📝 Adding token addresses to .env file..."
+if [ ! -f "./deployments/tokens.env" ]; then
+    echo "⚠️  Token addresses file not found"
+    exit 1
+fi
+
+echo "" >> .env
+echo "# Token Addresses" >> .env
+cat ./deployments/tokens.env | sed 's/^/TOKEN_/' >> .env
+source .env
+echo "✅ Token addresses added to environment"
+
+# Step 3: Deploy Hook
+echo "🪝 Step 3: Deploying Yield Maximizer Hook..."
+forge script script/02_DeployHook.s.sol:DeployHook \
+    --rpc-url $ANVIL_RPC_URL \
+    --private-key $ANVIL_PRIVATE_KEY \
+    --broadcast -v
+
+if [ $? -ne 0 ]; then
+    echo "❌ Hook deployment failed!"
+    exit 1
+fi
+
+echo "✅ Yield Maximizer Hook deployed successfully!"
+echo "📄 Hook info saved to: deployments/hook.env"
+
+# Add hook address to .env
+if [ -f "./deployments/hook.env" ]; then
+    echo "" >> .env
+    echo "# Hook Address" >> .env
+    grep "HOOK_ADDRESS=" ./deployments/hook.env >> .env
+    source .env
+    echo "✅ Hook address added to environment"
+fi
+
+# Step 4: Create Hook-Enabled Pools
+echo "🏊 Step 4: Creating hook-enabled liquidity pools (WETH/USDC, WETH/DAI, WBTC/WETH, USDC/DAI, YIELD/WETH)..."
+forge script script/03_CreatePools.s.sol:CreatePools \
+    --rpc-url $ANVIL_RPC_URL \
+    --private-key $ANVIL_PRIVATE_KEY \
+    --broadcast -v
+
+if [ $? -ne 0 ]; then
+    echo "❌ Hook-enabled pool creation failed!"
+    exit 1
+fi
+
+echo "✅ Hook-enabled liquidity pools created successfully!"
+echo "📄 Pool info saved to: deployments/pools.env"
+
+# Step 5: Provide Liquidity
+echo "💧 Step 5: Providing initial liquidity to hook-enabled pools..."
+forge script script/04_ProvideLiquidity.s.sol:ProvideLiquidity \
+    --rpc-url $ANVIL_RPC_URL \
+    --private-key $ANVIL_PRIVATE_KEY \
+    --broadcast -v
+
+if [ $? -ne 0 ]; then
+    echo "❌ Liquidity provision failed!"
+    exit 1
+fi
+
+echo "✅ Initial liquidity provided to hook-enabled pools successfully!"
+echo "📄 Liquidity info saved to: deployments/liquidity.env"
+
+echo ""
+echo "🎉 DEVELOPMENT ENVIRONMENT READY!"
+echo "   - Anvil running with 10 funded accounts"
+echo "   - Uniswap V4 PoolManager deployed"
+echo "   - 5 test tokens created and distributed"
+echo "   - Yield Maximizer Hook deployed and active"
+echo "   - 5 hook-enabled liquidity pools with deep liquidity"
+echo "   - Ready for yield maximization!"
 
 echo ""
 echo "📝 To stop Anvil later, run: kill $ANVIL_PID"
