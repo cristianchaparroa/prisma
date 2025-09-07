@@ -24,7 +24,7 @@ This script requires the following to be deployed and configured:
 
 ### Standalone Execution
 ```bash
-forge script script/04_ProvideLiquidity_PositionManager.s.sol \
+forge script script/local/04_ProvideLiquidity.s.sol \
     --rpc-url $ANVIL_RPC_URL \
     --private-key $ANVIL_PRIVATE_KEY \
     --broadcast -v
@@ -33,7 +33,7 @@ forge script script/04_ProvideLiquidity_PositionManager.s.sol \
 ### Via Automated Pipeline
 The script is automatically executed as part of the complete environment setup:
 ```bash
-./scripts/local/run-local-env.sh -y
+./scripts/local/run-local-env.sh
 ```
 
 ## Pool Configurations
@@ -77,12 +77,13 @@ function _calculateTokenAmounts(PoolConfig memory config)
 
 ### Successful Execution Logs
 ```
-Providing liquidity using PositionManager...
+Providing liquidity to hook-enabled pools using PositionManager...
 Loading contracts from environment variables...
 PoolManager loaded: 0x5FbDB2315678afecb367f032d93F642f64180aa3
 PositionManager loaded: 0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9
+YieldMaximizerHook loaded: 0x429051c72d815C038aE8D6442dAe87DD6d255540
 All contracts loaded successfully
-Providing liquidity to all pools...
+Providing liquidity to all hook-enabled pools...
 
 Providing liquidity to pool: WETH/USDC
   Tick range: -600 to 600
@@ -106,20 +107,13 @@ Liquidity provided successfully
 ## Integration Points
 
 ### Before This Script
-1. **Infrastructure deployment** (`00_DeployV4Infrastructure.s.sol`)
-2. **Token creation** (`01_CreateTokens.s.sol`)  
-3. **Pool initialization** (`03_CreatePools.s.sol`)
+1. **Infrastructure deployment** (`script/local/00_DeployV4Infrastructure.s.sol`)
+2. **Token creation** (`script/local/01_CreateTokens.s.sol`)  
+3. **Hook deployment** (`script/local/02_DeployHook.s.sol`)
+4. **Pool initialization** (`script/local/03_CreatePools.s.sol`)
 
 ### After This Script
 - Pools have **deep liquidity** ready for trading
 - Environment ready for **hook deployment**
 - **NFT positions** can be managed/modified
 - Ready for **yield optimization strategies**
-
-## Related Files
-
-- **Infrastructure**: `00_DeployV4Infrastructure.s.sol`
-- **Pool Creation**: `03_CreatePools.s.sol`  
-- **SimplePermit2**: `script/mocks/SimplePermit2.sol`
-
----

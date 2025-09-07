@@ -19,7 +19,7 @@ echo "ANVIL_RPC_URL=http://localhost:8545" >> .env
 
 ```bash
 # Execute the deployment script
-forge script script/00_DeployV4Infrastructure.s.sol --rpc-url $ANVIL_RPC_URL --private-key $ANVIL_PRIVATE_KEY --broadcast -vvv
+forge script script/local/00_DeployV4Infrastructure.s.sol --rpc-url $ANVIL_RPC_URL --private-key $ANVIL_PRIVATE_KEY --broadcast -vvv
 ```
 
 ## Expected Output
@@ -42,10 +42,3 @@ forge script script/00_DeployV4Infrastructure.s.sol --rpc-url $ANVIL_RPC_URL --p
 - ✅ **PoolManager**: Core Uniswap V4 contract deployed
 - ✅ **deployments/v4-infrastructure.env**: Saves deployment addresses
 - ✅ **Ready for next step**: Token creation
-
-## Next Step
-
-Once successful, proceed to create tokens with:
-```bash
-forge script script/01_CreateTokens.s.sol --rpc-url $ANVIL_RPC_URL --private-key $ANVIL_PRIVATE_KEY --broadcast -vvv
-```

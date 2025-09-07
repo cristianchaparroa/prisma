@@ -1,7 +1,7 @@
 # Deploy Yield Maximizer Hook Script
 
 ## Overview
-The `05_DeployHook.s.sol` script deploys the YieldMaximizerHook contract to the local Anvil environment with proper Uniswap V4 hook permissions and address requirements.
+The `02_DeployHook.s.sol` script deploys the YieldMaximizerHook contract to the local Anvil environment with proper Uniswap V4 hook permissions and address requirements.
 
 ## Purpose
 This script is part of the local development pipeline and handles the deployment of the custom Uniswap V4 hook that enables automated yield maximization through fee compounding.
@@ -9,24 +9,28 @@ This script is part of the local development pipeline and handles the deployment
 ## Prerequisites
 - Anvil running locally (`anvil --fork-url $MAINNET_RPC_URL`)
 - PoolManager already deployed (via `00_DeployV4Infrastructure.s.sol`)
+- Test tokens created (via `01_CreateTokens.s.sol`)
 - Environment variables set in `.env` file
 
 ## Required Environment Variables
 ```bash
-ANVIL_PRIVATE_KEY=0x..
+ANVIL_PRIVATE_KEY=0x...
 POOL_MANAGER=0x...  # From infrastructure deployment
+TOKEN_WETH=0x...    # From token creation
+TOKEN_USDC=0x...    # From token creation
+# ... other token addresses
 ```
 
 ## Usage
 
 ### Basic Deployment
 ```bash
-forge script script/05_DeployHook.s.sol --rpc-url $ANVIL_RPC_URL --broadcast
+forge script script/local/02_DeployHook.s.sol --rpc-url $ANVIL_RPC_URL --private-key $ANVIL_PRIVATE_KEY --broadcast
 ```
 
 ### With Verification
 ```bash
-forge script script/05_DeployHook.s.sol --rpc-url $ANVIL_RPC_URL --broadcast -vvv
+forge script script/local/02_DeployHook.s.sol --rpc-url $ANVIL_RPC_URL --private-key $ANVIL_PRIVATE_KEY --broadcast -vvv
 ```
 
 ## What This Script Does

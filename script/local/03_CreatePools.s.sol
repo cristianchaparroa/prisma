@@ -12,8 +12,8 @@ import {TickMath} from "v4-core/libraries/TickMath.sol";
 import {MockERC20} from "./01_CreateTokens.s.sol";
 
 /**
- * @title Create Liquidity Pools
- * @notice Creates Uniswap V4 pools for testing the yield maximizer
+ * @title Create Hook-Enabled Liquidity Pools
+ * @notice Creates Uniswap V4 pools with YieldMaximizerHook integrated from the start
  */
 contract CreatePools is Script {
     using PoolIdLibrary for PoolKey;
@@ -21,6 +21,7 @@ contract CreatePools is Script {
 
     // Core contracts
     IPoolManager public poolManager;
+    IHooks public hook;
 
     // Token contracts
     MockERC20 public weth;
@@ -83,6 +84,11 @@ contract CreatePools is Script {
         address poolManagerAddr = vm.envAddress("POOL_MANAGER");
         poolManager = IPoolManager(poolManagerAddr);
         console.log("PoolManager loaded:", address(poolManager));
+
+        // Load YieldMaximizerHook from environment variable
+        address hookAddr = vm.envAddress("HOOK_ADDRESS");
+        hook = IHooks(hookAddr);
+        console.log("YieldMaximizerHook loaded:", address(hook));
 
         // Load token contracts from environment variables
         weth = MockERC20(vm.envAddress("TOKEN_WETH"));
@@ -163,14 +169,15 @@ contract CreatePools is Script {
         console.log("  Currency1:", Currency.unwrap(config.currency1));
         console.log("  Fee:", config.fee);
         console.log("  Tick Spacing:", config.tickSpacing);
+        console.log("  Hook:", address(hook));
 
-        // Create PoolKey
+        // Create PoolKey with YieldMaximizerHook
         PoolKey memory key = PoolKey({
             currency0: config.currency0,
             currency1: config.currency1,
             fee: config.fee,
             tickSpacing: config.tickSpacing,
-            hooks: IHooks(address(0)) // No hook for now - will be added later
+            hooks: hook // YieldMaximizerHook integrated from creation
         });
 
         // Initialize the pool
@@ -181,7 +188,8 @@ contract CreatePools is Script {
         PoolId poolId = key.toId();
         poolIds.push(poolId);
 
-        console.log("Pool created with ID:", vm.toString(PoolId.unwrap(poolId)));
+        console.log("Hook-enabled pool created with ID:", vm.toString(PoolId.unwrap(poolId)));
+        console.log("  Hook address in pool:", address(key.hooks));
     }
 
     function _sortCurrencies(Currency currencyA, Currency currencyB) internal pure returns (CurrencyPair memory) {
