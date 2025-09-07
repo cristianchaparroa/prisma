@@ -99,7 +99,7 @@ contract DistributeTokens is Script {
         // Note: You need to manually set these in .env after running 01_CreateTokens.s.sol
         // Or run setTokenAddresses() with the deployed addresses
 
-        console.log("⚠️  Token addresses need to be set manually for now");
+        console.log("Token addresses need to be set manually for now");
         console.log("After running 01_CreateTokens.s.sol, copy the addresses and either:");
         console.log("1. Add them to .env file as WETH_ADDRESS=0x..., etc.");
         console.log("2. Call setTokenAddresses() with the deployed addresses");
@@ -173,7 +173,7 @@ contract DistributeTokens is Script {
         wbtc = MockERC20(_wbtc);
         yieldToken = MockERC20(_yield);
 
-        console.log("✅ Token addresses set:");
+        console.log("Token addresses set:");
         console.log("  WETH:", address(weth));
         console.log("  USDC:", address(usdc));
         console.log("  DAI:", address(dai));
