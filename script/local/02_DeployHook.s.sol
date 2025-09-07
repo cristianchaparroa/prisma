@@ -6,7 +6,7 @@ import {IPoolManager} from "v4-core/interfaces/IPoolManager.sol";
 import {IHooks} from "v4-core/interfaces/IHooks.sol";
 import {Hooks} from "v4-core/libraries/Hooks.sol";
 import {HookMiner} from "v4-periphery/src/utils/HookMiner.sol";
-import {YieldMaximizerHook} from "../src/YieldMaximizerHook.sol";
+import {YieldMaximizerHook} from "../../src/YieldMaximizerHook.sol";
 
 /**
  * @title Deploy Yield Maximizer Hook

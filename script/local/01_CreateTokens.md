@@ -18,7 +18,7 @@ source .env
 ## Execute Token Creation
 
 ```bash
-forge script script/01_CreateTokens.s.sol:CreateTokens \
+forge script script/local/01_CreateTokens.s.sol:CreateTokens \
     --rpc-url $ANVIL_RPC_URL \
     --private-key $ANVIL_PRIVATE_KEY \
     --broadcast -v

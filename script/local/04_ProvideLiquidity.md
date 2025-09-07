@@ -24,7 +24,7 @@ This script requires the following to be deployed and configured:
 
 ### Standalone Execution
 ```bash
-forge script script/04_ProvideLiquidity_PositionManager.s.sol \
+forge script script/local/04_ProvideLiquidity.s.sol \
     --rpc-url $ANVIL_RPC_URL \
     --private-key $ANVIL_PRIVATE_KEY \
     --broadcast -v
@@ -33,7 +33,7 @@ forge script script/04_ProvideLiquidity_PositionManager.s.sol \
 ### Via Automated Pipeline
 The script is automatically executed as part of the complete environment setup:
 ```bash
-./scripts/local/run-local-env.sh -y
+./scripts/local/run-local-env.sh
 ```
 
 ## Pool Configurations
@@ -107,9 +107,10 @@ Liquidity provided successfully
 ## Integration Points
 
 ### Before This Script
-1. **Infrastructure deployment** (`00_DeployV4Infrastructure.s.sol`)
-2. **Token creation** (`01_CreateTokens.s.sol`)  
-3. **Pool initialization** (`03_CreatePools.s.sol`)
+1. **Infrastructure deployment** (`script/local/00_DeployV4Infrastructure.s.sol`)
+2. **Token creation** (`script/local/01_CreateTokens.s.sol`)  
+3. **Hook deployment** (`script/local/02_DeployHook.s.sol`)
+4. **Pool initialization** (`script/local/03_CreatePools.s.sol`)
 
 ### After This Script
 - Pools have **deep liquidity** ready for trading

@@ -25,12 +25,12 @@ TOKEN_USDC=0x...    # From token creation
 
 ### Basic Deployment
 ```bash
-forge script script/02_DeployHook.s.sol --rpc-url $ANVIL_RPC_URL --private-key $ANVIL_PRIVATE_KEY --broadcast
+forge script script/local/02_DeployHook.s.sol --rpc-url $ANVIL_RPC_URL --private-key $ANVIL_PRIVATE_KEY --broadcast
 ```
 
 ### With Verification
 ```bash
-forge script script/02_DeployHook.s.sol --rpc-url $ANVIL_RPC_URL --private-key $ANVIL_PRIVATE_KEY --broadcast -vvv
+forge script script/local/02_DeployHook.s.sol --rpc-url $ANVIL_RPC_URL --private-key $ANVIL_PRIVATE_KEY --broadcast -vvv
 ```
 
 ## What This Script Does

@@ -19,7 +19,7 @@ echo "ANVIL_RPC_URL=http://localhost:8545" >> .env
 
 ```bash
 # Execute the deployment script
-forge script script/00_DeployV4Infrastructure.s.sol --rpc-url $ANVIL_RPC_URL --private-key $ANVIL_PRIVATE_KEY --broadcast -vvv
+forge script script/local/00_DeployV4Infrastructure.s.sol --rpc-url $ANVIL_RPC_URL --private-key $ANVIL_PRIVATE_KEY --broadcast -vvv
 ```
 
 ## Expected Output

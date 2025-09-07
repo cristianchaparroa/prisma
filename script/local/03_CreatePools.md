@@ -33,7 +33,7 @@ TOKEN_YIELD=0x...
 ## Execute Pool Creation
 
 ```bash
-forge script script/03_CreatePools.s.sol:CreatePools \
+forge script script/local/03_CreatePools.s.sol:CreatePools \
     --rpc-url $ANVIL_RPC_URL \
     --private-key $ANVIL_PRIVATE_KEY \
     --broadcast -v

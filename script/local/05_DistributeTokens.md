@@ -8,13 +8,13 @@ Distributes the created test tokens (WETH, USDC, DAI, WBTC, YIELD) to multiple t
 1. **Complete environment set up** (recommended via automated pipeline):
 ```bash
 # Should be done via run-local-env.sh:
-./scripts/local/run-local-env.sh -y
+./scripts/local/run-local-env.sh
 ```
 
 OR manually ensure all previous steps are complete:
 ```bash
 # 1. Infrastructure, 2. Tokens, 3. Hook, 4. Pools, 5. Liquidity
-forge script script/01_CreateTokens.s.sol:CreateTokens --rpc-url $ANVIL_RPC_URL --private-key $ANVIL_PRIVATE_KEY --broadcast -v
+forge script script/local/01_CreateTokens.s.sol:CreateTokens --rpc-url $ANVIL_RPC_URL --private-key $ANVIL_PRIVATE_KEY --broadcast -v
 ```
 
 2. **Environment properly set**:
@@ -35,7 +35,7 @@ TOKEN_YIELD=0x...
 ## Execute Token Distribution
 
 ```bash
-forge script script/05_DistributeTokens.s.sol:DistributeTokens \
+forge script script/local/05_DistributeTokens.s.sol:DistributeTokens \
     --rpc-url $ANVIL_RPC_URL \
     --private-key $ANVIL_PRIVATE_KEY \
     --broadcast -v
@@ -150,11 +150,11 @@ setTokenAddresses(
 
 This script is **optional** and typically run **after** the complete development environment is set up:
 
-1. ✅ **Infrastructure deployed** (script/00)
-2. ✅ **Tokens created** (script/01)
-3. ✅ **Hook deployed** (script/02)
-4. ✅ **Hook-enabled pools created** (script/03)
-5. ✅ **Liquidity provided** (script/04)
+1. ✅ **Infrastructure deployed** (script/local/00)
+2. ✅ **Tokens created** (script/local/01)
+3. ✅ **Hook deployed** (script/local/02)
+4. ✅ **Hook-enabled pools created** (script/local/03)
+5. ✅ **Liquidity provided** (script/local/04)
 6. **🎯 Now distribute tokens** for additional testing
 
 ## Next Steps

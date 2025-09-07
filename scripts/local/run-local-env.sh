@@ -137,7 +137,7 @@ echo ""
 
 # Step 1: Deploy Infrastructure
 echo "🚀 Step 1: Deploying Uniswap V4 Infrastructure..."
-forge script script/00_DeployV4Infrastructure.s.sol \
+forge script script/local/00_DeployV4Infrastructure.s.sol \
     --rpc-url $ANVIL_RPC_URL \
     --private-key $ANVIL_PRIVATE_KEY \
     --broadcast -v
@@ -160,7 +160,7 @@ fi
 
 # Step 2: Create Tokens
 echo "🪙 Step 2: Creating test tokens (WETH, USDC, DAI, WBTC, YIELD)..."
-forge script script/01_CreateTokens.s.sol:CreateTokens \
+forge script script/local/01_CreateTokens.s.sol:CreateTokens \
     --rpc-url $ANVIL_RPC_URL \
     --private-key $ANVIL_PRIVATE_KEY \
     --broadcast -v
@@ -188,7 +188,7 @@ echo "✅ Token addresses added to environment"
 
 # Step 3: Deploy Hook
 echo "🪝 Step 3: Deploying Yield Maximizer Hook..."
-forge script script/02_DeployHook.s.sol:DeployHook \
+forge script script/local/02_DeployHook.s.sol:DeployHook \
     --rpc-url $ANVIL_RPC_URL \
     --private-key $ANVIL_PRIVATE_KEY \
     --broadcast -v
@@ -212,7 +212,7 @@ fi
 
 # Step 4: Create Hook-Enabled Pools
 echo "🏊 Step 4: Creating hook-enabled liquidity pools (WETH/USDC, WETH/DAI, WBTC/WETH, USDC/DAI, YIELD/WETH)..."
-forge script script/03_CreatePools.s.sol:CreatePools \
+forge script script/local/03_CreatePools.s.sol:CreatePools \
     --rpc-url $ANVIL_RPC_URL \
     --private-key $ANVIL_PRIVATE_KEY \
     --broadcast -v
@@ -227,7 +227,7 @@ echo "📄 Pool info saved to: deployments/pools.env"
 
 # Step 5: Provide Liquidity
 echo "💧 Step 5: Providing initial liquidity to hook-enabled pools..."
-forge script script/04_ProvideLiquidity.s.sol:ProvideLiquidity \
+forge script script/local/04_ProvideLiquidity.s.sol:ProvideLiquidity \
     --rpc-url $ANVIL_RPC_URL \
     --private-key $ANVIL_PRIVATE_KEY \
     --broadcast -v
