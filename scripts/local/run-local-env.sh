@@ -7,6 +7,7 @@
 # 3. Sources the .env file
 # 4. Deploys infrastructure automatically
 # 5. Creates test tokens automatically
+# 6. Creates liquidity pools automatically
 
 set -e  # Exit on any error
 
@@ -141,6 +142,15 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     if [ $? -eq 0 ]; then
         echo "✅ Infrastructure deployed successfully!"
         
+        # Extract PoolManager address and add to .env
+        if [ -f "./deployments/v4-infrastructure.env" ]; then
+            echo "" >> .env
+            echo "# Infrastructure Addresses" >> .env
+            cat ./deployments/v4-infrastructure.env >> .env
+            source .env
+            echo "✅ Infrastructure addresses added to environment"
+        fi
+        
         # Optional: Auto-create tokens
         read -p "🪙 Create test tokens now? (y/n): " -n 1 -r
         echo
@@ -163,6 +173,24 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
                     cat ./deployments/tokens.env | sed 's/^/TOKEN_/' >> .env
                     source .env
                     echo "✅ Token addresses added to environment"
+                    
+                    # Optional: Auto-create pools
+                    read -p "🏊 Create liquidity pools now? (y/n): " -n 1 -r
+                    echo
+                    if [[ $REPLY =~ ^[Yy]$ ]]; then
+                        echo "🏊 Creating liquidity pools (WETH/USDC, WETH/DAI, WBTC/WETH, USDC/DAI, YIELD/WETH)..."
+                        forge script script/03_CreatePools.s.sol:CreatePools \
+                            --rpc-url $ANVIL_RPC_URL \
+                            --private-key $ANVIL_PRIVATE_KEY \
+                            --broadcast -v
+                        
+                        if [ $? -eq 0 ]; then
+                            echo "✅ Liquidity pools created successfully!"
+                            echo "📄 Pool info saved to: deployments/pools.env"
+                        else
+                            echo "❌ Pool creation failed!"
+                        fi
+                    fi
                 else
                     echo "⚠️  Token addresses file not found"
                 fi
