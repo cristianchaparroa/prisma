@@ -154,6 +154,18 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
             if [ $? -eq 0 ]; then
                 echo "✅ Test tokens created successfully!"
                 echo "📄 Token addresses saved to: deployments/tokens.env"
+                
+                # Extract token addresses and add to .env
+                echo "📝 Adding token addresses to .env file..."
+                if [ -f "./deployments/tokens.env" ]; then
+                    echo "" >> .env
+                    echo "# Token Addresses" >> .env
+                    cat ./deployments/tokens.env | sed 's/^/TOKEN_/' >> .env
+                    source .env
+                    echo "✅ Token addresses added to environment"
+                else
+                    echo "⚠️  Token addresses file not found"
+                fi
             else
                 echo "❌ Token creation failed!"
             fi
