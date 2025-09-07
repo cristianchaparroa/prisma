@@ -93,7 +93,7 @@ contract DistributeTokens is Script {
         _saveDistributionInfo();
     }
 
-    function _loadTokenContracts() internal {
+    function _loadTokenContracts() internal pure {
         console.log("Loading token contracts from deployment addresses...");
 
         // Load token addresses from environment variables
