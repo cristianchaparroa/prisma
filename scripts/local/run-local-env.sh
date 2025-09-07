@@ -1,18 +1,19 @@
 #!/bin/bash
 
-# Automated Anvil Setup Script
+# Automated Local Development Environment Setup
 # This script:
 # 1. Starts Anvil and captures account info
-# 2. Creates .env file with first account
+# 2. Creates .env file with first account  
 # 3. Sources the .env file
 # 4. Deploys infrastructure automatically
+# 5. Creates test tokens automatically
 
 set -e  # Exit on any error
 
 # Change to project root directory
 cd "$(dirname "$0")/../.."
 
-echo "🚀 Starting Automated Anvil Setup..."
+echo "🚀 Starting Local Development Environment..."
 echo "📂 Working directory: $(pwd)"
 
 # Kill any existing anvil processes
@@ -139,6 +140,24 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     
     if [ $? -eq 0 ]; then
         echo "✅ Infrastructure deployed successfully!"
+        
+        # Optional: Auto-create tokens
+        read -p "🪙 Create test tokens now? (y/n): " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            echo "🪙 Creating test tokens (WETH, USDC, DAI, WBTC, YIELD)..."
+            forge script script/01_CreateTokens.s.sol:CreateTokens \
+                --rpc-url $ANVIL_RPC_URL \
+                --private-key $ANVIL_PRIVATE_KEY \
+                --broadcast -v
+            
+            if [ $? -eq 0 ]; then
+                echo "✅ Test tokens created successfully!"
+                echo "📄 Token addresses saved to: deployments/tokens.env"
+            else
+                echo "❌ Token creation failed!"
+            fi
+        fi
     else
         echo "❌ Infrastructure deployment failed!"
     fi
@@ -146,6 +165,6 @@ fi
 
 echo ""
 echo "📝 To stop Anvil later, run: kill $ANVIL_PID"
-echo "📝 To restart this setup, run: ./scripts/local/setup-anvil.sh"
+echo "📝 To restart this setup, run: ./scripts/local/run-local-env.sh"
 echo ""
 echo "🎉 Ready for development!"

@@ -32,4 +32,4 @@ rm -rf broadcast/
 rm -rf cache/
 
 echo "✅ Cleanup complete!"
-echo "🚀 Run ./scripts/local/setup-anvil.sh to start fresh"
+echo "🚀 Run ./scripts/local/run-local-env.sh to start fresh"
