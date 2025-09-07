@@ -237,8 +237,11 @@ contract CompoundingLogicTest is Test, SimpleDeployers {
     function testTimeBasedCompoundScheduling() public {
         console.log("\n=== Testing Time-Based Compound Scheduling ===");
 
+        // Get Alice's actual last compound time (set during strategy activation)
+        (,,, uint256 activationTime,,) = hook.userStrategies(alice);
+
         // Test that time advances properly affect compound eligibility
-        uint256 startTime = block.timestamp;
+        uint256 startTime = activationTime;
 
         // Warp to just before minimum interval
         vm.warp(startTime + 59 minutes);
