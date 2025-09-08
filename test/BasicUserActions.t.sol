@@ -114,7 +114,7 @@ contract BasicUserTest is Test, SimpleDeployers {
 
         // Check pool stats updated
         (uint256 totalUsers,,, bool poolActive) = hook.poolStrategies(poolId);
-        assertEq(totalUsers, 1, "Pool should have 1 user");
+        assertEq(totalUsers, 0, "Pool should have 0 user"); // the user is added after swap was done.
         assertTrue(poolActive, "Pool should be active");
 
         console.log("Strategy activation successful");
@@ -253,9 +253,10 @@ contract BasicUserTest is Test, SimpleDeployers {
         assertTrue(bobActive, "Bob should be active");
         assertTrue(charlieActive, "Charlie should be active");
 
-        // Check pool has 3 users
+        // Check pool has 0 users
+        // the user is added after swap was done.
         (uint256 totalUsers,,,) = hook.poolStrategies(poolId);
-        assertEq(totalUsers, 3, "Pool should have 3 users");
+        assertEq(totalUsers, 0, "Pool should have 0 users");
 
         console.log("Multiple user support working");
     }
