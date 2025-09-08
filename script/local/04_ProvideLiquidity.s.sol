@@ -186,26 +186,26 @@ contract ProvideLiquidity is Script {
     }
 
     function _calculateTickRange(PoolConfig memory config) internal pure returns (int24 tickLower, int24 tickUpper) {
-        // Use simple tick ranges around current price for all pools
+        // Use much wider tick ranges to ensure swaps work regardless of price
         int24 tickSpacing = config.tickSpacing;
 
         if (keccak256(abi.encodePacked(config.name)) == keccak256("WETH/USDC")) {
-            tickLower = -600; // About 6% below
-            tickUpper = 600; // About 6% above
+            tickLower = -1200; // Wider range for volatile pairs
+            tickUpper = 1200;
         } else if (keccak256(abi.encodePacked(config.name)) == keccak256("WETH/DAI")) {
-            tickLower = -600;
-            tickUpper = 600;
+            tickLower = -1200;
+            tickUpper = 1200;
         } else if (keccak256(abi.encodePacked(config.name)) == keccak256("WBTC/WETH")) {
-            tickLower = -600;
-            tickUpper = 600;
+            tickLower = -1200;
+            tickUpper = 1200;
         } else if (keccak256(abi.encodePacked(config.name)) == keccak256("USDC/DAI")) {
-            // Tighter range for stablecoin pair
-            tickLower = -100;
-            tickUpper = 100;
+            // Much wider range for stablecoin pair to ensure swaps work
+            tickLower = -1000; // Expanded from -100
+            tickUpper = 1000; // Expanded from 100
         } else {
-            // YIELD/WETH
-            tickLower = -1000; // Wider range for new token
-            tickUpper = 1000;
+            // YIELD/WETH - keep wide range
+            tickLower = -2000;
+            tickUpper = 2000;
         }
 
         // Align to tick spacing

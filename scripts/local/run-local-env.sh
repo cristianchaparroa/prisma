@@ -240,14 +240,30 @@ fi
 echo "✅ Initial liquidity provided to hook-enabled pools successfully!"
 echo "📄 Liquidity info saved to: deployments/liquidity.env"
 
+# Step 6: Distribute Tokens to Test Accounts
+echo "🪙 Step 6: Distributing tokens to test accounts..."
+forge script script/local/05_DistributeTokens.s.sol \
+    --rpc-url $ANVIL_RPC_URL \
+    --private-key $ANVIL_PRIVATE_KEY \
+    --broadcast -v
+
+if [ $? -ne 0 ]; then
+    echo "❌ Token distribution failed!"
+    exit 1
+fi
+
+echo "✅ Tokens distributed to test accounts successfully!"
+echo "📄 Distribution info saved to: deployments/distribution.env"
+
 echo ""
 echo "🎉 DEVELOPMENT ENVIRONMENT READY!"
 echo "   - Anvil running with 10 funded accounts"
 echo "   - Uniswap V4 PoolManager deployed"
-echo "   - 5 test tokens created and distributed"
+echo "   - 5 test tokens created and distributed to users"
 echo "   - Yield Maximizer Hook deployed and active"
 echo "   - 5 hook-enabled liquidity pools with deep liquidity"
-echo "   - Ready for yield maximization!"
+echo "   - Test accounts funded with tokens"
+echo "   - Ready for yield maximization and user simulation!"
 
 echo ""
 echo "📝 To stop Anvil later, run: kill $ANVIL_PID"
