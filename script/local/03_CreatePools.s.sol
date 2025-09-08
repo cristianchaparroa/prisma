@@ -180,13 +180,25 @@ contract CreatePools is Script {
             hooks: hook // YieldMaximizerHook integrated from creation
         });
 
-        // Initialize the pool
-        poolManager.initialize(key, config.sqrtPriceX96);
+        // Initialize the pool with error checking
+        console.log("Initializing pool...");
+        try poolManager.initialize(key, config.sqrtPriceX96) {
+            console.log("  Pool initialized successfully");
+        } catch Error(string memory reason) {
+            console.log("  Pool initialization failed:", reason);
+            revert(string.concat("Failed to initialize pool: ", reason));
+        } catch {
+            console.log("  Pool initialization failed: Unknown error");
+            revert("Failed to initialize pool: Unknown error");
+        }
 
         // Store pool info
         poolKeys.push(key);
         PoolId poolId = key.toId();
         poolIds.push(poolId);
+
+        console.log("  Pool creation completed");
+        console.log("    Pool ID:", vm.toString(PoolId.unwrap(poolId)));
 
         console.log("Hook-enabled pool created with ID:", vm.toString(PoolId.unwrap(poolId)));
         console.log("  Hook address in pool:", address(key.hooks));

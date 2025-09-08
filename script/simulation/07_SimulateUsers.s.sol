@@ -427,7 +427,7 @@ contract SimulateUsers is Script {
             amount0Max,
             amount1Max,
             recipient,
-            bytes("") // hookData
+            abi.encode(recipient) // hookData
         );
 
         // SETTLE_PAIR parameters

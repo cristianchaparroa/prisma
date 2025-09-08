@@ -8,9 +8,12 @@ import {IHooks} from "v4-core/interfaces/IHooks.sol";
 import {Currency, CurrencyLibrary} from "v4-core/types/Currency.sol";
 import {PoolKey} from "v4-core/types/PoolKey.sol";
 import {PoolId, PoolIdLibrary} from "v4-core/types/PoolId.sol";
+import {ModifyLiquidityParams} from "v4-core/types/PoolOperation.sol";
 import {Actions} from "v4-periphery/src/libraries/Actions.sol";
 import {MockERC20} from "./01_CreateTokens.s.sol";
 import {IERC20} from "forge-std/interfaces/IERC20.sol";
+import {TickMath} from "v4-core/libraries/TickMath.sol";
+import {LiquidityAmounts} from "@uniswap/v4-core/test/utils/LiquidityAmounts.sol";
 
 /**
  * @title Provide Liquidity to Hook-Enabled Pools
@@ -259,9 +262,8 @@ contract ProvideLiquidity is Script {
         uint256 amount0Max,
         uint256 amount1Max
     ) internal {
-        // Use PositionManager.modifyLiquidities() with correct encoding
-        // unlockData = abi.encode(bytes actions, bytes[] params)
-        // where actions[i] corresponds to params[i]
+        // Use PositionManager.modifyLiquidities() with correct encoding (from working project memory solution)
+        // CRITICAL: This is the only approach that works in Forge scripts
 
         bytes memory actions = abi.encodePacked(uint8(Actions.MINT_POSITION), uint8(Actions.SETTLE_PAIR));
 
@@ -276,7 +278,7 @@ contract ProvideLiquidity is Script {
             amount0Max,
             amount1Max,
             msg.sender, // recipient
-            bytes("") // hookData
+            abi.encode(msg.sender) // hookData
         );
 
         // SETTLE_PAIR parameters
@@ -284,7 +286,7 @@ contract ProvideLiquidity is Script {
 
         bytes memory unlockData = abi.encode(actions, params);
 
-        // Execute via modifyLiquidities
+        // Execute via modifyLiquidities (this handles unlock callbacks properly)
         positionManager.modifyLiquidities(unlockData, block.timestamp + 60);
 
         console.log(" Position minted via PositionManager");
