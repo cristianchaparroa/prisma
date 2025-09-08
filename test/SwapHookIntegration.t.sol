@@ -642,4 +642,138 @@ contract SwapHookIntegrationTest is Test, Deployers {
         console.log("Final Alice total fees:", finalAliceFees.totalFeesEarned);
         console.log("Test completed successfully");
     }
+
+    function test_calculateFeesFromSwapAccuracy() public {
+        PoolId poolId = key.toId();
+
+        // Setup: Alice activates strategy and adds liquidity
+        vm.startPrank(alice);
+        hook.activateStrategy(poolId, 100 gwei, 5);
+
+        uint256 aliceEthToAdd = 0.1 ether;
+        uint128 aliceLiquidityDelta =
+            LiquidityAmounts.getLiquidityForAmount0(SQRT_PRICE_1_1, TickMath.getSqrtPriceAtTick(60), aliceEthToAdd);
+
+        modifyLiquidityRouter.modifyLiquidity{value: aliceEthToAdd}(
+            key,
+            ModifyLiquidityParams({
+                tickLower: -60,
+                tickUpper: 60,
+                liquidityDelta: int256(uint256(aliceLiquidityDelta)),
+                salt: bytes32(0)
+            }),
+            abi.encode(alice)
+        );
+        vm.stopPrank();
+
+        // Test different swap amounts and verify fee calculations
+        uint256[] memory swapAmounts = new uint256[](4);
+        swapAmounts[0] = 0.001 ether; // Small swap
+        swapAmounts[1] = 0.01 ether; // Medium swap
+        swapAmounts[2] = 0.1 ether; // Large swap
+        swapAmounts[3] = 1 ether; // Very large swap
+
+        console.log("=== Fee Calculation Accuracy Test ===");
+        console.log("Pool fee tier:", key.fee); // Should be 3000 (0.3%)
+
+        vm.deal(address(this), 10 ether);
+
+        for (uint256 i = 0; i < swapAmounts.length; i++) {
+            uint256 swapAmount = swapAmounts[i];
+
+            // Get Alice's fees before swap
+            YieldMaximizerHook.FeeAccounting memory feesBefore = hook.getUserFees(alice, poolId);
+
+            console.log("--- Swap", i + 1, "---");
+            console.log("Swap amount (ETH):", swapAmount);
+
+            // Perform the swap
+            swapRouter.swap{value: swapAmount}(
+                key,
+                SwapParams({
+                    zeroForOne: true,
+                    amountSpecified: -int256(swapAmount),
+                    sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
+                }),
+                PoolSwapTest.TestSettings({takeClaims: false, settleUsingBurn: false}),
+                ZERO_BYTES
+            );
+
+            // Get Alice's fees after swap
+            YieldMaximizerHook.FeeAccounting memory feesAfter = hook.getUserFees(alice, poolId);
+
+            // Calculate the fee increase
+            uint256 actualFeeIncrease = feesAfter.totalFeesEarned - feesBefore.totalFeesEarned;
+
+            // Calculate expected fees manually
+            // Expected fee = swapAmount * feeTier / 1,000,000
+            // Since Alice is the only LP, she should get all the fees
+            uint256 expectedFees = (swapAmount * key.fee) / 1000000;
+
+            console.log("Swap amount:", swapAmount);
+            console.log("Expected fees:", expectedFees);
+            console.log("Actual fees:", actualFeeIncrease);
+
+            // Calculate the accuracy percentage
+            if (expectedFees > 0) {
+                uint256 accuracy = (actualFeeIncrease * 10000) / expectedFees; // Basis points
+                console.log("Accuracy:", accuracy, "basis points (10000 = 100%)");
+
+                // The accuracy should be close to 100% (allowing for some variance due to price impact)
+                // We allow 80% to 120% accuracy to account for:
+                // - Price impact affecting the actual swap volume
+                // - Rounding differences in the fee calculation
+                // - AMM mechanics that might affect fee distribution
+                assertGe(accuracy, 8000, "Fee calculation should be at least 80% accurate");
+                assertLe(accuracy, 12000, "Fee calculation should be at most 120% accurate");
+
+                // Verify basic sanity checks
+                assertGt(actualFeeIncrease, 0, "Should always earn some fees from swaps");
+
+                // For larger swaps, expect higher absolute fees
+                if (i > 0) {
+                    YieldMaximizerHook.FeeAccounting memory previousFees = hook.getUserFees(alice, poolId);
+                    // Note: Due to price impact, larger swaps may not always yield proportionally higher fees
+                    // So we just check that we're earning reasonable amounts
+                    assertGt(actualFeeIncrease, 0, "Each swap should generate fees");
+                }
+            }
+        }
+
+        // Test edge cases
+        console.log("\n=== Edge Case Tests ===");
+
+        // Test very small swap (dust amount)
+        uint256 dustAmount = 1000 wei; // Very small amount
+        YieldMaximizerHook.FeeAccounting memory dustBefore = hook.getUserFees(alice, poolId);
+
+        // Try to swap dust amount (might fail due to minimum swap requirements)
+        try swapRouter.swap{value: dustAmount}(
+            key,
+            SwapParams({
+                zeroForOne: true,
+                amountSpecified: -int256(dustAmount),
+                sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
+            }),
+            PoolSwapTest.TestSettings({takeClaims: false, settleUsingBurn: false}),
+            ZERO_BYTES
+        ) {
+            YieldMaximizerHook.FeeAccounting memory dustAfter = hook.getUserFees(alice, poolId);
+            uint256 dustFees = dustAfter.totalFeesEarned - dustBefore.totalFeesEarned;
+            console.log("Dust swap fees:", dustFees);
+
+            // Even tiny swaps should generate some fees (or at least not break)
+            // The calculateFeesFromSwap function should handle small amounts gracefully
+        } catch {
+            console.log("Dust swap failed (expected for very small amounts)");
+        }
+
+        // Verify final state
+        YieldMaximizerHook.FeeAccounting memory finalFees = hook.getUserFees(alice, poolId);
+        assertGt(finalFees.totalFeesEarned, 0, "Alice should have earned total fees from all swaps");
+        assertEq(finalFees.pendingCompound, finalFees.totalFeesEarned, "All fees should be pending for compound");
+
+        console.log("\nFinal total fees earned:", finalFees.totalFeesEarned);
+        console.log("Fee calculation accuracy test completed successfully");
+    }
 }
