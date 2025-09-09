@@ -41,6 +41,9 @@ contract FundAccounts is Script {
         _loadContracts();
         _loadTestAccounts();
 
+        // Start broadcasting transactions 
+        vm.startBroadcast(deployerPrivateKey);
+
         // Define funding amounts per user type
         FundingAmounts memory smallUser = FundingAmounts({
             weth: 20 * 10**18,      // 20 WETH (~$50K)
@@ -77,6 +80,8 @@ contract FundAccounts is Script {
 
             _fundAccount(testAccounts[i], amounts, i);
         }
+
+        vm.stopBroadcast();
 
         console.log("\nAll test accounts funded with real mainnet tokens");
         _saveFundingInfo();
@@ -121,25 +126,41 @@ contract FundAccounts is Script {
     function _fundAccount(address account, FundingAmounts memory amounts, uint256 accountIndex) internal {
         console.log("\nFunding account", accountIndex, ":", account);
 
+        // Stop broadcasting temporarily to do prank operations
+        vm.stopBroadcast();
+
+        // Ensure whales have ETH for gas
+        vm.deal(wethWhale, 10 ether);
+        vm.deal(usdcWhale, 10 ether);
+        vm.deal(daiWhale, 10 ether);
+        vm.deal(wbtcWhale, 10 ether);
+
         // Transfer WETH from whale
         vm.startPrank(wethWhale);
-        weth.transfer(account, amounts.weth);
+        bool success1 = weth.transfer(account, amounts.weth);
+        require(success1, "WETH transfer failed");
         vm.stopPrank();
 
         // Transfer USDC from whale
         vm.startPrank(usdcWhale);
-        usdc.transfer(account, amounts.usdc);
+        bool success2 = usdc.transfer(account, amounts.usdc);
+        require(success2, "USDC transfer failed");
         vm.stopPrank();
 
         // Transfer DAI from whale
         vm.startPrank(daiWhale);
-        dai.transfer(account, amounts.dai);
+        bool success3 = dai.transfer(account, amounts.dai);
+        require(success3, "DAI transfer failed");
         vm.stopPrank();
 
         // Transfer WBTC from whale
         vm.startPrank(wbtcWhale);
-        wbtc.transfer(account, amounts.wbtc);
+        bool success4 = wbtc.transfer(account, amounts.wbtc);
+        require(success4, "WBTC transfer failed");
         vm.stopPrank();
+
+        // Resume broadcasting
+        vm.startBroadcast();
 
         console.log("WETH:", amounts.weth / 10**18);
         console.log("USDC:", amounts.usdc / 10**6);

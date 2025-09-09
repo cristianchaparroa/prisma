@@ -72,7 +72,7 @@ PERMIT2=0x000000000022D473030F116dDEE9F6B43aC78BA3
 UNIVERSAL_ROUTER=0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD
 
 # Real Mainnet Tokens (High Liquidity)
-TOKEN_USDC=0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48
+TOKEN_USDC=0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
 TOKEN_WETH=0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2
 TOKEN_DAI=0x6B175474E89094C44Da98b954EedeAC495271d0F
 TOKEN_USDT=0xdAC17F958D2ee523a2206206994597C13D831ec7
@@ -126,9 +126,9 @@ echo "✅ Static environment created with verified mainnet addresses"
 
 # Test real mainnet contracts
 echo "🧪 Testing real mainnet contracts..."
-echo "USDC Symbol: $(cast call 0xA0b86a33E6441E2db4e4d6a70eE22dF8F0d0FaC0 "symbol()" --rpc-url http://localhost:8545)"
-echo "WETH Symbol: $(cast call 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2 "symbol()" --rpc-url http://localhost:8545)"
-echo "DAI Symbol: $(cast call 0x6B175474E89094C44Da98b954EedeAC495271d0F "symbol()" --rpc-url http://localhost:8545)"
+echo "USDC Symbol: $(cast call $TOKEN_USDC "symbol()" --rpc-url http://localhost:8545)"
+echo "WETH Symbol: $(cast call $TOKEN_WETH "symbol()" --rpc-url http://localhost:8545)"
+echo "DAI Symbol: $(cast call $TOKEN_DAI "symbol()" --rpc-url http://localhost:8545)"
 
 # Source the environment for subsequent steps
 source .env
@@ -139,7 +139,7 @@ sleep 5
 
 # Step 3: Deploy V4 Infrastructure
 echo "📍 Step 3: Deploying minimal V4 infrastructure..."
-forge script scripts/fork/01_DeployMinimalV4.s.sol \
+forge script script/fork/01_DeployMinimalV4.s.sol \
     --rpc-url $ANVIL_RPC_URL \
     --private-key $ANVIL_PRIVATE_KEY \
     --broadcast \
@@ -159,7 +159,7 @@ fi
 
 # Step 4: Deploy YieldMaximizerHook
 echo "📍 Step 4: Deploying YieldMaximizerHook..."
-forge script scripts/fork/03_DeployYieldHook.s.sol \
+forge script script/fork/03_DeployYieldHook.s.sol \
     --rpc-url $ANVIL_RPC_URL \
     --private-key $ANVIL_PRIVATE_KEY \
     --broadcast \
@@ -179,7 +179,7 @@ fi
 
 # Step 5: Fund Test Accounts
 echo "📍 Step 5: Funding test accounts with real tokens..."
-forge script scripts/fork/02_FundAccounts.s.sol \
+forge script script/fork/02_FundAccounts.s.sol \
     --rpc-url $ANVIL_RPC_URL \
     --private-key $ANVIL_PRIVATE_KEY \
     --broadcast \
@@ -192,7 +192,7 @@ fi
 
 # Step 6: Create Pools
 echo "📍 Step 6: Creating pools with real tokens..."
-forge script scripts/fork/04_CreateMainnetPools.s.sol \
+forge script script/fork/04_CreateMainnetPools.s.sol \
     --rpc-url $ANVIL_RPC_URL \
     --private-key $ANVIL_PRIVATE_KEY \
     --broadcast \

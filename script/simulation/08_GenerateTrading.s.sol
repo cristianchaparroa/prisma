@@ -9,7 +9,6 @@ import {PoolId, PoolIdLibrary} from "v4-core/types/PoolId.sol";
 import {BalanceDelta} from "v4-core/types/BalanceDelta.sol";
 import {SwapParams} from "v4-core/types/PoolOperation.sol";
 import {PoolSwapTest} from "v4-core/test/PoolSwapTest.sol";
-import {MockERC20} from "../local/01_CreateTokens.s.sol";
 import {YieldMaximizerHook} from "../../src/YieldMaximizerHook.sol";
 import {IERC20} from "forge-std/interfaces/IERC20.sol";
 
@@ -115,8 +114,14 @@ contract GenerateTrading is Script {
         poolManager = IPoolManager(vm.envAddress("POOL_MANAGER"));
         yieldHook = YieldMaximizerHook(vm.envAddress("HOOK_ADDRESS"));
 
-        // Deploy swap router for testing (if not exists)
-        swapRouter = new PoolSwapTest(poolManager);
+        // Load existing swap router if available, otherwise deploy new one
+        try vm.envAddress("SWAP_ROUTER") returns (address existingRouter) {
+            swapRouter = PoolSwapTest(existingRouter);
+            console.log(string.concat("  Using existing SwapRouter: ", vm.toString(address(swapRouter))));
+        } catch {
+            swapRouter = new PoolSwapTest(poolManager);
+            console.log(string.concat("  Deployed new SwapRouter: ", vm.toString(address(swapRouter))));
+        }
 
         console.log(string.concat("  PoolManager: ", vm.toString(address(poolManager))));
         console.log(string.concat("  YieldMaximizerHook: ", vm.toString(address(yieldHook))));
@@ -286,9 +291,22 @@ contract GenerateTrading is Script {
 
             // Calculate trade size based on trader type and pool
             uint256 amountIn = _calculateTradeSize(trader, pool, seed);
+            
+            // Debug log for trade amounts
+            if (i < 5) {
+                console.log(string.concat("Trade ", vm.toString(i), " amount: ", vm.toString(amountIn)));
+            }
 
-            // Skip if trader doesn't have enough tokens
-            if (!_hasEnoughTokens(trader, pool, zeroForOne, amountIn)) {
+            // Skip if trader doesn't have enough tokens or trade size is too small
+            if (amountIn == 0 || !_hasEnoughTokens(trader, pool, zeroForOne, amountIn)) {
+                // Debug log for skipped trades
+                if (amountIn == 0) {
+                    console.log(string.concat("Skipping zero amount trade for trader ", vm.toString(trader)));
+                } else {
+                    Currency tokenIn = zeroForOne ? pool.token0 : pool.token1;
+                    uint256 balance = IERC20(Currency.unwrap(tokenIn)).balanceOf(trader);
+                    console.log(string.concat("Skipping trade - insufficient balance. Required: ", vm.toString(amountIn), ", Available: ", vm.toString(balance)));
+                }
                 continue;
             }
 
@@ -347,38 +365,28 @@ contract GenerateTrading is Script {
         returns (uint256)
     {
         bool isWhale = _isWhaleTrader(trader);
-        uint256 sizeMultiplier = seed % 10 + 1; // 1-10x multiplier
+        uint256 sizeMultiplier = (seed % 5) + 1; // 1-5x multiplier for more reasonable sizes
 
-        uint256 baseSize;
-        bool useToken0 = (seed % 2) == 0;
+        // Determine which token we're trading based on trade direction
+        bool zeroForOne = (seed % 2) == 0;
+        Currency tokenIn = zeroForOne ? pool.token0 : pool.token1;
+        address tokenAddress = Currency.unwrap(tokenIn);
 
-        if (useToken0) {
-            baseSize = pool.baseTradeSize0;
+        uint256 baseAmount;
+        
+        // Set base amounts by token type
+        if (tokenAddress == address(usdc)) {
+            baseAmount = isWhale ? 2500 * 10 ** 6 : 100 * 10 ** 6; // Whale: $2500, Regular: $100
+        } else if (tokenAddress == address(wbtc)) {
+            baseAmount = isWhale ? 50 * 10 ** 6 : 10 * 10 ** 6; // Whale: 0.5 WBTC, Regular: 0.1 WBTC
+        } else if (tokenAddress == address(dai)) {
+            baseAmount = isWhale ? 2500 * 10 ** 18 : 100 * 10 ** 18; // Whale: 2500 DAI, Regular: 100 DAI
         } else {
-            baseSize = pool.baseTradeSize1;
+            // WETH or other 18-decimal tokens
+            baseAmount = isWhale ? 2 * 10 ** 18 : 2 * 10 ** 17; // Whale: 2 ETH, Regular: 0.2 ETH
         }
 
-        if (isWhale) {
-            // Whale trades: 5-50x base size
-            return baseSize * (5 + (sizeMultiplier % 10));
-        } else {
-            // Regular trades: Use smaller base amounts but avoid zero
-            // Instead of dividing by 10, use a smaller base amount
-            uint256 regularBaseSize = baseSize / 20; // Start with 5% of base
-            if (regularBaseSize == 0) {
-                // Ensure minimum trade size
-                if (Currency.unwrap(pool.token0) == address(usdc) || Currency.unwrap(pool.token1) == address(usdc)) {
-                    regularBaseSize = 100 * 10 ** 6; // 100 USDC minimum
-                } else if (
-                    Currency.unwrap(pool.token0) == address(wbtc) || Currency.unwrap(pool.token1) == address(wbtc)
-                ) {
-                    regularBaseSize = 1 * 10 ** 6; // 0.01 WBTC minimum
-                } else {
-                    regularBaseSize = 1 * 10 ** 17; // 0.1 ETH/token minimum
-                }
-            }
-            return regularBaseSize * sizeMultiplier;
-        }
+        return baseAmount * sizeMultiplier;
     }
 
     function _hasEnoughTokens(address trader, PoolConfig memory pool, bool zeroForOne, uint256 amountIn)
@@ -388,7 +396,10 @@ contract GenerateTrading is Script {
     {
         Currency tokenIn = zeroForOne ? pool.token0 : pool.token1;
         uint256 balance = IERC20(Currency.unwrap(tokenIn)).balanceOf(trader);
-        return balance >= amountIn;
+        
+        // Require 20% buffer above trade amount to account for potential price impact
+        uint256 requiredBalance = (amountIn * 120) / 100;
+        return balance >= requiredBalance;
     }
 
     function _calculateMinAmountOut(PoolConfig memory pool, bool zeroForOne, uint256 amountIn)
@@ -444,6 +455,12 @@ contract GenerateTrading is Script {
                 _formatAmount(trade.amountIn, trade.zeroForOne ? trade.pool.token0Decimals : trade.pool.token1Decimals)
             )
         );
+        
+        // Check if this is a zero amount trade - skip it
+        if (trade.amountIn == 0) {
+            console.log("  Skipping zero amount trade");
+            return;
+        }
 
         // Get trader's private key
         uint256 traderIndex = _getTraderIndex(trade.trader);
@@ -455,32 +472,75 @@ contract GenerateTrading is Script {
         Currency tokenIn = trade.zeroForOne ? trade.pool.token0 : trade.pool.token1;
         IERC20(Currency.unwrap(tokenIn)).approve(address(swapRouter), trade.amountIn);
 
-        // Execute swap
-        try swapRouter.swap(
-            trade.pool.poolKey,
-            SwapParams({
-                zeroForOne: trade.zeroForOne,
-                amountSpecified: -int256(trade.amountIn), // Exact input
-                sqrtPriceLimitX96: trade.zeroForOne ? 4295128739 : 1461446703485210103287273052203988822378723970342 // No price limit
-            }),
-            PoolSwapTest.TestSettings({takeClaims: false, settleUsingBurn: false}),
-            bytes("")
-        ) returns (BalanceDelta delta) {
-            console.log(" Trade executed successfully");
+        // Verify trader still has enough balance just before execution
+        uint256 currentBalance = IERC20(Currency.unwrap(tokenIn)).balanceOf(trade.trader);
+        if (currentBalance < trade.amountIn) {
+            console.log(" Trade skipped: Insufficient balance");
+            vm.stopBroadcast();
+            return;
+        }
+        
+        // Execute swap with proper price limits
+        uint160 sqrtPriceLimitX96;
+        if (trade.zeroForOne) {
+            // Minimum price limit for zeroForOne (token0 -> token1)
+            sqrtPriceLimitX96 = 4295128740; // Very low price limit
+        } else {
+            // Maximum price limit for oneForZero (token1 -> token0) 
+            sqrtPriceLimitX96 = 1461446703485210103287273052203988822378723970341; // Very high price limit
+        }
+        
+        // Try swap with smaller amount if original fails
+        uint256 attemptAmount = trade.amountIn;
+        bool swapSuccessful = false;
+        
+        for (uint256 attempt = 0; attempt < 3 && !swapSuccessful; attempt++) {
+            try swapRouter.swap(
+                trade.pool.poolKey,
+                SwapParams({
+                    zeroForOne: trade.zeroForOne,
+                    amountSpecified: -int256(attemptAmount), // Exact input
+                    sqrtPriceLimitX96: sqrtPriceLimitX96
+                }),
+                PoolSwapTest.TestSettings({takeClaims: false, settleUsingBurn: false}),
+                bytes("")
+            ) returns (BalanceDelta delta) {
+                swapSuccessful = true;
+                console.log(string.concat(" Trade executed successfully with amount: ", vm.toString(attemptAmount)));
 
-            // Update statistics
-            stats.totalTrades++;
-            stats.poolTrades[trade.pool.poolId]++;
-            stats.traderActivity[trade.trader]++;
+                // Update statistics
+                stats.totalTrades++;
+                stats.poolTrades[trade.pool.poolId]++;
+                stats.traderActivity[trade.trader]++;
 
-            // Estimate fees generated (pool fee * trade size)
-            uint256 feeAmount = trade.amountIn * trade.pool.fee / 1000000;
-            stats.totalFeesGenerated += feeAmount;
-            stats.poolVolume[trade.pool.poolId] += trade.amountIn;
-        } catch Error(string memory reason) {
-            console.log(" Trade failed:", reason);
-        } catch {
-            console.log(" Trade failed: Unknown error");
+                // Estimate fees generated (pool fee * trade size)
+                uint256 feeAmount = attemptAmount * trade.pool.fee / 1000000;
+                stats.totalFeesGenerated += feeAmount;
+                stats.poolVolume[trade.pool.poolId] += attemptAmount;
+                
+                break; // Exit retry loop
+            } catch Error(string memory reason) {
+                if (attempt < 2) {
+                    // Try with 50% of current amount
+                    attemptAmount = attemptAmount / 2;
+                    console.log(string.concat("  Retrying with smaller amount: ", vm.toString(attemptAmount)));
+                } else {
+                    console.log(string.concat(" Trade failed after retries: ", reason));
+                    console.log(string.concat("   Token balance: ", vm.toString(IERC20(Currency.unwrap(tokenIn)).balanceOf(trade.trader))));
+                }
+            } catch (bytes memory lowLevelData) {
+                if (attempt < 2) {
+                    // Try with 50% of current amount
+                    attemptAmount = attemptAmount / 2;
+                    console.log(string.concat("  Retrying with smaller amount: ", vm.toString(attemptAmount)));
+                } else {
+                    console.log(" Trade failed after retries: Unknown error");
+                    console.log(string.concat("   Token balance: ", vm.toString(IERC20(Currency.unwrap(tokenIn)).balanceOf(trade.trader))));
+                    if (lowLevelData.length > 0) {
+                        console.log("   Low level error data available");
+                    }
+                }
+            }
         }
 
         vm.stopBroadcast();
