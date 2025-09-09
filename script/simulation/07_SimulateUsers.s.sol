@@ -8,33 +8,33 @@ import {Currency, CurrencyLibrary} from "v4-core/types/Currency.sol";
 import {PoolKey} from "v4-core/types/PoolKey.sol";
 import {PoolId, PoolIdLibrary} from "v4-core/types/PoolId.sol";
 import {Actions} from "v4-periphery/src/libraries/Actions.sol";
-import {MockERC20} from "../local/01_CreateTokens.s.sol";
 import {YieldMaximizerHook} from "../../src/YieldMaximizerHook.sol";
 import {IERC20} from "forge-std/interfaces/IERC20.sol";
+import {IPermit2} from "permit2/src/interfaces/IPermit2.sol";
 
 /**
  * @title Simulate Diverse Users with Auto-Compound Strategies
- * @notice Creates 9 different user personas with varied risk profiles and strategy activations
- *         Each user activates ONE auto-compound strategy (hook limitation) but provides liquidity to multiple pools
- *         Builds on top of existing token distribution and pool infrastructure
+ * @notice Creates 9 different user personas with varied risk profiles and strategy activations.
+ *         Each user activates ONE auto-compound strategy (hook limitation) but can LP in multiple pools.
  */
 contract SimulateUsers is Script {
     using PoolIdLibrary for PoolKey;
     using CurrencyLibrary for Currency;
 
-    // Core contracts (loaded from existing deployment)
+    // Core contracts (loaded from env)
     IPoolManager public poolManager;
     IPositionManager public positionManager;
     YieldMaximizerHook public yieldHook;
 
-    // Token contracts (from existing deployment)
-    MockERC20 public weth;
-    MockERC20 public usdc;
-    MockERC20 public dai;
-    MockERC20 public wbtc;
-    MockERC20 public yieldToken;
+    // Tokens
+    IERC20 public weth;
+    IERC20 public usdc;
+    IERC20 public dai;
+    IERC20 public wbtc;
+    // IERC20 public yieldToken; // optional, loaded if TOKEN_YIELD is set
+    bool   public hasYieldToken;
 
-    // Test accounts (from existing distribution)
+    // Test accounts
     address[] public testAccounts;
     uint256[] public testPrivateKeys;
 
@@ -42,14 +42,14 @@ contract SimulateUsers is Script {
     struct UserProfile {
         string name;
         string riskProfile;
-        uint8 riskLevel; // 1-10 scale for hook
-        uint256 gasThreshold; // Max gas price (in gwei)
-        PoolId[] preferredPools; // Pools this user will provide liquidity to
-        uint256[] liquidityRatios; // Percentage of holdings to add to each pool
-        bool isWhale; // Different behavior for whale users
+        uint8 riskLevel; // 1-10
+        uint256 gasThreshold; // in gwei
+        PoolId[] preferredPools; // pools to LP
+        uint256[] liquidityRatios; // % allocations per pool
+        bool isWhale;
     }
 
-    // Pool configurations (from existing deployment)
+    // Pool configurations
     struct PoolConfig {
         string name;
         PoolKey poolKey;
@@ -59,58 +59,76 @@ contract SimulateUsers is Script {
     }
 
     PoolConfig[] public poolConfigs;
+    // indexes for quick reference
+    uint256 private idxWethUsdc;
+    uint256 private idxWethDai;
+    uint256 private idxUsdcDai;
+    uint256 private idxWbtcWeth;
+    uint256 private idxYieldWeth; // only valid if hasYieldToken
 
+    /* ---------------------------
+       ENTRY
+       --------------------------- */
     function run() external {
-        // Load existing infrastructure
         _loadContracts();
         _loadTestAccounts();
         _loadPoolConfigurations();
 
-        console.log("Starting User Simulation with Strategy Activation...");
-        console.log(string.concat("Users to simulate: ", vm.toString(testAccounts.length - 1))); // Skip deployer account
+        console.log(string.concat("Starting User Simulation with Strategy Activation..."));
+        console.log(string.concat("Users to simulate: ", vm.toString(testAccounts.length - 1))); // skip deployer
 
-        // Simulate each user (skip account 0 which is deployer)
         for (uint256 i = 1; i < testAccounts.length && i < 10; i++) {
             UserProfile memory profile = _getUserProfile(i);
             _simulateUser(i, profile);
         }
 
-        console.log("\n USER SIMULATION COMPLETE!");
-        console.log("Each user has one active auto-compound strategy on their primary pool");
-        console.log("Diverse liquidity positions created");
-        console.log("Ready for trading activity generation");
-
-        // Save simulation info
+        console.log(string.concat("\nUSER SIMULATION COMPLETE!"));
         _saveSimulationInfo();
     }
 
+    /* ---------------------------
+       SETUP / LOADING
+       --------------------------- */
     function _loadContracts() internal {
         console.log("Loading contracts from existing deployment...");
 
-        // Load core contracts from environment
-        poolManager = IPoolManager(vm.envAddress("POOL_MANAGER"));
+        poolManager     = IPoolManager(vm.envAddress("POOL_MANAGER"));
         positionManager = IPositionManager(vm.envAddress("POSITION_MANAGER"));
-        yieldHook = YieldMaximizerHook(vm.envAddress("HOOK_ADDRESS"));
+        yieldHook       = YieldMaximizerHook(vm.envAddress("HOOK_ADDRESS"));
 
-        console.log(string.concat("  PoolManager: ", vm.toString(address(poolManager))));
-        console.log(string.concat("  PositionManager: ", vm.toString(address(positionManager))));
+        weth = IERC20(vm.envAddress("TOKEN_WETH"));
+        usdc = IERC20(vm.envAddress("TOKEN_USDC"));
+        dai  = IERC20(vm.envAddress("TOKEN_DAI"));
+        wbtc = IERC20(vm.envAddress("TOKEN_WBTC"));
+
+        // Optional YIELD token (only if env present)
+//        try vm.envAddress("TOKEN_YIELD") returns (address y) {
+//            if (y != address(0)) {
+//                yieldToken = IERC20(y);
+//                hasYieldToken = true;
+//            } else {
+//                hasYieldToken = false;
+//            }
+//        } catch {
+//            hasYieldToken = false;
+//        }
+
+        console.log(string.concat("  PoolManager:        ", vm.toString(address(poolManager))));
+        console.log(string.concat("  PositionManager:    ", vm.toString(address(positionManager))));
         console.log(string.concat("  YieldMaximizerHook: ", vm.toString(address(yieldHook))));
-
-        // Load token contracts
-        weth = MockERC20(vm.envAddress("TOKEN_WETH"));
-        usdc = MockERC20(vm.envAddress("TOKEN_USDC"));
-        dai = MockERC20(vm.envAddress("TOKEN_DAI"));
-        wbtc = MockERC20(vm.envAddress("TOKEN_WBTC"));
-        yieldToken = MockERC20(vm.envAddress("TOKEN_YIELD"));
-
-        console.log("All contracts loaded successfully");
+        console.log(string.concat("  WETH:               ", vm.toString(address(weth))));
+        console.log(string.concat("  USDC:               ", vm.toString(address(usdc))));
+        console.log(string.concat("  DAI:                ", vm.toString(address(dai))));
+        console.log(string.concat("  WBTC:               ", vm.toString(address(wbtc))));
+//        if (hasYieldToken) {
+//            console.log(string.concat("  YIELD:              ", vm.toString(address(yieldToken))));
+//        }
     }
 
     function _loadTestAccounts() internal {
         console.log("Loading test accounts from environment...");
 
-        // Load test accounts and private keys
-        testAccounts.push(vm.envAddress("ANVIL_ADDRESS")); // Account 0 (deployer)
+        testAccounts.push(vm.envAddress("ANVIL_ADDRESS")); // 0 - deployer
         testPrivateKeys.push(vm.envUint("ANVIL_PRIVATE_KEY"));
 
         for (uint256 i = 1; i <= 9; i++) {
@@ -119,11 +137,7 @@ contract SimulateUsers is Script {
                 uint256 privateKey = vm.envUint(string.concat("ACCOUNT_", vm.toString(i), "_PRIVATE_KEY"));
                 testPrivateKeys.push(privateKey);
             } catch {
-                console.log(
-                    string.concat(
-                        "Account ", vm.toString(i), " not found, stopping at ", vm.toString(i - 1), " accounts"
-                    )
-                );
+                console.log(string.concat("Account ", vm.toString(i), " not found, stopping at ", vm.toString(i - 1), " accounts"));
                 break;
             }
         }
@@ -134,137 +148,39 @@ contract SimulateUsers is Script {
     function _loadPoolConfigurations() internal {
         console.log("Loading pool configurations...");
 
-        // WETH/USDC Pool
-        PoolKey memory wethUsdcKey =
-            _createPoolKey(Currency.wrap(address(weth)), Currency.wrap(address(usdc)), 3000, 60);
-        poolConfigs.push(
-            PoolConfig({name: "WETH/USDC", poolKey: wethUsdcKey, poolId: wethUsdcKey.toId(), tickSpacing: 60, fee: 3000})
-        );
+        // WETH/USDC 0.3% / 60
+        PoolKey memory wethUsdcKey = _createPoolKey(Currency.wrap(address(weth)), Currency.wrap(address(usdc)), 3000, 60);
+        idxWethUsdc = poolConfigs.length;
+        poolConfigs.push(PoolConfig("WETH/USDC", wethUsdcKey, wethUsdcKey.toId(), 60, 3000));
 
-        // WETH/DAI Pool
+        // WETH/DAI 0.3% / 60
         PoolKey memory wethDaiKey = _createPoolKey(Currency.wrap(address(weth)), Currency.wrap(address(dai)), 3000, 60);
-        poolConfigs.push(
-            PoolConfig({name: "WETH/DAI", poolKey: wethDaiKey, poolId: wethDaiKey.toId(), tickSpacing: 60, fee: 3000})
-        );
+        idxWethDai = poolConfigs.length;
+        poolConfigs.push(PoolConfig("WETH/DAI", wethDaiKey, wethDaiKey.toId(), 60, 3000));
 
-        // USDC/DAI Pool (Stablecoin)
+        // USDC/DAI 0.05% / 10
         PoolKey memory usdcDaiKey = _createPoolKey(Currency.wrap(address(usdc)), Currency.wrap(address(dai)), 500, 10);
-        poolConfigs.push(
-            PoolConfig({name: "USDC/DAI", poolKey: usdcDaiKey, poolId: usdcDaiKey.toId(), tickSpacing: 10, fee: 500})
-        );
+        idxUsdcDai = poolConfigs.length;
+        poolConfigs.push(PoolConfig("USDC/DAI", usdcDaiKey, usdcDaiKey.toId(), 10, 500));
 
-        // WBTC/WETH Pool
-        PoolKey memory wbtcWethKey =
-            _createPoolKey(Currency.wrap(address(wbtc)), Currency.wrap(address(weth)), 3000, 60);
-        poolConfigs.push(
-            PoolConfig({name: "WBTC/WETH", poolKey: wbtcWethKey, poolId: wbtcWethKey.toId(), tickSpacing: 60, fee: 3000})
-        );
+        // WBTC/WETH 0.3% / 60
+        PoolKey memory wbtcWethKey = _createPoolKey(Currency.wrap(address(wbtc)), Currency.wrap(address(weth)), 3000, 60);
+        idxWbtcWeth = poolConfigs.length;
+        poolConfigs.push(PoolConfig("WBTC/WETH", wbtcWethKey, wbtcWethKey.toId(), 60, 3000));
 
-        // YIELD/WETH Pool
-        PoolKey memory yieldWethKey =
-            _createPoolKey(Currency.wrap(address(yieldToken)), Currency.wrap(address(weth)), 10000, 200);
-        poolConfigs.push(
-            PoolConfig({
-                name: "YIELD/WETH",
-                poolKey: yieldWethKey,
-                poolId: yieldWethKey.toId(),
-                tickSpacing: 200,
-                fee: 10000
-            })
-        );
+        // Optional YIELD/WETH 1% / 200 (only if TOKEN_YIELD provided)
+//        if (hasYieldToken) {
+//            PoolKey memory yieldWethKey = _createPoolKey(Currency.wrap(address(yieldToken)), Currency.wrap(address(weth)), 10_000, 200);
+//            idxYieldWeth = poolConfigs.length;
+//            poolConfigs.push(PoolConfig("YIELD/WETH", yieldWethKey, yieldWethKey.toId(), 200, 10_000));
+//        }
 
         console.log(string.concat("Loaded ", vm.toString(poolConfigs.length), " pool configurations"));
     }
 
-    function _getUserProfile(uint256 accountIndex) internal view returns (UserProfile memory) {
-        PoolId[] memory pools;
-        uint256[] memory ratios;
-
-        if (accountIndex >= 1 && accountIndex <= 3) {
-            // Conservative users (accounts 1-3): Focus on stablecoins and major pairs
-            pools = new PoolId[](2);
-            ratios = new uint256[](2);
-            pools[0] = poolConfigs[2].poolId; // USDC/DAI
-            pools[1] = poolConfigs[0].poolId; // WETH/USDC
-            ratios[0] = 60; // 60% in stablecoin pair
-            ratios[1] = 40; // 40% in WETH/USDC
-
-            return UserProfile({
-                name: string.concat("Conservative_User_", vm.toString(accountIndex)),
-                riskProfile: "conservative",
-                riskLevel: 2,
-                gasThreshold: 20 gwei, // Low gas tolerance
-                preferredPools: pools,
-                liquidityRatios: ratios,
-                isWhale: false
-            });
-        } else if (accountIndex >= 4 && accountIndex <= 6) {
-            // Moderate users (accounts 4-6): Balanced approach
-            pools = new PoolId[](3);
-            ratios = new uint256[](3);
-            pools[0] = poolConfigs[0].poolId; // WETH/USDC
-            pools[1] = poolConfigs[1].poolId; // WETH/DAI
-            pools[2] = poolConfigs[2].poolId; // USDC/DAI
-            ratios[0] = 40; // 40% in WETH/USDC
-            ratios[1] = 35; // 35% in WETH/DAI
-            ratios[2] = 25; // 25% in stablecoins
-
-            return UserProfile({
-                name: string.concat("Moderate_User_", vm.toString(accountIndex)),
-                riskProfile: "moderate",
-                riskLevel: 5,
-                gasThreshold: 50 gwei, // Medium gas tolerance
-                preferredPools: pools,
-                liquidityRatios: ratios,
-                isWhale: false
-            });
-        } else if (accountIndex >= 7 && accountIndex <= 8) {
-            // Aggressive users (accounts 7-8): High risk, high reward
-            pools = new PoolId[](3);
-            ratios = new uint256[](3);
-            pools[0] = poolConfigs[3].poolId; // WBTC/WETH
-            pools[1] = poolConfigs[4].poolId; // YIELD/WETH
-            pools[2] = poolConfigs[0].poolId; // WETH/USDC
-            ratios[0] = 40; // 40% in WBTC/WETH
-            ratios[1] = 35; // 35% in YIELD/WETH
-            ratios[2] = 25; // 25% in WETH/USDC
-
-            return UserProfile({
-                name: string.concat("Aggressive_User_", vm.toString(accountIndex)),
-                riskProfile: "aggressive",
-                riskLevel: 8,
-                gasThreshold: 100 gwei, // High gas tolerance
-                preferredPools: pools,
-                liquidityRatios: ratios,
-                isWhale: false
-            });
-        } else {
-            // Whale user (account 9): Diversified across all pools
-            pools = new PoolId[](5);
-            ratios = new uint256[](5);
-            pools[0] = poolConfigs[0].poolId; // WETH/USDC
-            pools[1] = poolConfigs[1].poolId; // WETH/DAI
-            pools[2] = poolConfigs[2].poolId; // USDC/DAI
-            pools[3] = poolConfigs[3].poolId; // WBTC/WETH
-            pools[4] = poolConfigs[4].poolId; // YIELD/WETH
-            ratios[0] = 25; // 25% in each major pool
-            ratios[1] = 25;
-            ratios[2] = 20;
-            ratios[3] = 15;
-            ratios[4] = 15;
-
-            return UserProfile({
-                name: "Whale_User_9",
-                riskProfile: "whale",
-                riskLevel: 6,
-                gasThreshold: 75 gwei, // High gas tolerance
-                preferredPools: pools,
-                liquidityRatios: ratios,
-                isWhale: true
-            });
-        }
-    }
-
+    /* ---------------------------
+       USER SIM
+       --------------------------- */
     function _simulateUser(uint256 accountIndex, UserProfile memory profile) internal {
         console.log(string.concat("\nSimulating user: ", profile.name));
         console.log(string.concat("  Risk Profile: ", profile.riskProfile));
@@ -277,20 +193,24 @@ contract SimulateUsers is Script {
 
         vm.startBroadcast(userPrivateKey);
 
-        // 1. Activate strategy for each preferred pool
-        // 1. Activate strategy for the user's primary pool only (hook limitation: one strategy per user)
-        PoolId primaryPoolId = profile.preferredPools[0]; // Use first pool as primary
+        // Check if strategy is already active before activating
+        PoolId primaryPoolId = profile.preferredPools[0];
+        console.log(string.concat("  Checking strategy for primary pool: ", _getPoolName(primaryPoolId)));
+        
+        // Get current user strategy to check if already active
+        YieldMaximizerHook.UserStrategy memory currentStrategy = yieldHook.getUserStrategy(userAddress);
+        
+        if (currentStrategy.isActive) {
+            console.log("  Strategy already active - updating parameters instead");
+            yieldHook.updateStrategy(profile.gasThreshold, profile.riskLevel);
+        } else {
+            console.log("  Activating new strategy");
+            yieldHook.activateStrategy(primaryPoolId, profile.gasThreshold, profile.riskLevel);
+        }
 
-        console.log(string.concat("  Activating strategy for primary pool: ", _getPoolName(primaryPoolId)));
-
-        yieldHook.activateStrategy(primaryPoolId, profile.gasThreshold, profile.riskLevel);
-
-        // 2. Provide liquidity to preferred pools
+        // Provide liquidity across preferred pools
         for (uint256 i = 0; i < profile.preferredPools.length; i++) {
-            PoolId poolId = profile.preferredPools[i];
-            uint256 liquidityRatio = profile.liquidityRatios[i];
-
-            _provideLiquidityForUser(userAddress, poolId, liquidityRatio, profile.isWhale);
+            _provideLiquidityForUser(userAddress, profile.preferredPools[i], profile.liquidityRatios[i], profile.isWhale);
         }
 
         vm.stopBroadcast();
@@ -300,107 +220,111 @@ contract SimulateUsers is Script {
 
     function _provideLiquidityForUser(address user, PoolId poolId, uint256 ratio, bool isWhale) internal {
         PoolConfig memory poolConfig = _getPoolConfig(poolId);
-        console.log(
-            string.concat("    Adding liquidity to ", poolConfig.name, " with ", vm.toString(ratio), "% allocation")
-        );
 
-        // Calculate amounts based on user's token holdings and allocation ratio
+        console.log(string.concat("    Adding liquidity to ", poolConfig.name, " with ", vm.toString(ratio), "% allocation"));
+
         (uint256 amount0, uint256 amount1) = _calculateUserLiquidityAmounts(user, poolConfig, ratio, isWhale);
 
+        uint256 bal0 = IERC20(Currency.unwrap(poolConfig.poolKey.currency0)).balanceOf(user);
+        uint256 bal1 = IERC20(Currency.unwrap(poolConfig.poolKey.currency1)).balanceOf(user);
+        console.log(string.concat("    Bal0: ", vm.toString(bal0), " Bal1: ", vm.toString(bal1)));
+        console.log(string.concat("    Using amounts0/1: ", vm.toString(amount0), " / ", vm.toString(amount1)));
+
         if (amount0 == 0 || amount1 == 0) {
-            console.log("Insufficient tokens for liquidity provision");
+            console.log("Insufficient tokens for liquidity provision, skipping");
             return;
         }
 
-        // Approve tokens for PositionManager
-        _approveTokensForUser(poolConfig.poolKey.currency0, poolConfig.poolKey.currency1, amount0, amount1);
+        // Approve Permit2 + PositionManager (performed by the user's account due to startBroadcast)
+        _approveTokensForUser(poolConfig.poolKey.currency0, poolConfig.poolKey.currency1);
 
-        // Calculate tick range for position
         (int24 tickLower, int24 tickUpper) = _calculateTickRange(poolConfig, isWhale);
 
-        // Mint position using PositionManager
         _mintUserPosition(poolConfig.poolKey, tickLower, tickUpper, amount0, amount1, user);
 
-        console.log("Liquidity added successfully");
+        console.log("Liquidity added");
     }
 
     function _calculateUserLiquidityAmounts(address user, PoolConfig memory poolConfig, uint256 ratio, bool isWhale)
-        internal
-        view
-        returns (uint256 amount0, uint256 amount1)
+    internal
+    view
+    returns (uint256 amount0, uint256 amount1)
     {
-        Currency currency0 = poolConfig.poolKey.currency0;
-        Currency currency1 = poolConfig.poolKey.currency1;
+        Currency c0 = poolConfig.poolKey.currency0;
+        Currency c1 = poolConfig.poolKey.currency1;
 
-        // Get user's token balances
-        uint256 balance0 = IERC20(Currency.unwrap(currency0)).balanceOf(user);
-        uint256 balance1 = IERC20(Currency.unwrap(currency1)).balanceOf(user);
+        uint256 b0 = IERC20(Currency.unwrap(c0)).balanceOf(user);
+        uint256 b1 = IERC20(Currency.unwrap(c1)).balanceOf(user);
 
-        if (isWhale) {
-            // Whale users provide more liquidity
-            amount0 = (balance0 * ratio) / 100;
-            amount1 = (balance1 * ratio) / 100;
+        // Base allocation
+        uint256 divisor = isWhale ? 100 : 200; // whales allocate "ratio%" of balance, regular users "ratio/2%"
+        amount0 = (b0 * ratio) / divisor;
+        amount1 = (b1 * ratio) / divisor;
+
+        // Apply minimums by token decimals (USDC: 6, WBTC: 8, most others: 18)
+        amount0 = _applyMin(amount0, Currency.unwrap(c0));
+        amount1 = _applyMin(amount1, Currency.unwrap(c1));
+
+        // Clamp to balance
+        if (amount0 > b0) amount0 = b0;
+        if (amount1 > b1) amount1 = b1;
+    }
+
+    function _applyMin(uint256 amt, address token) internal view returns (uint256) {
+        // reasonable minimums
+        uint256 minNormal = 100;   // 100 units (in token native decimals)
+        uint256 minWhale  = 1000;  // 1000 units (in token native decimals)
+        // use minNormal as baseline to avoid tiny amounts
+        if (token == address(usdc)) {
+            uint256 m = minNormal * 1e6;
+            return amt < m ? m : amt;
+        } else if (token == address(wbtc)) {
+            uint256 m = minNormal * 1e8;
+            return amt < m ? m : amt;
         } else {
-            // Regular users provide conservative amounts
-            amount0 = (balance0 * ratio) / 200; // Use half of the ratio
-            amount1 = (balance1 * ratio) / 200;
-        }
-
-        // Ensure minimum liquidity amounts
-        uint256 minAmount = isWhale ? 1000 : 100; // Different minimums for whales vs regular users
-
-        if (Currency.unwrap(currency0) == address(usdc)) {
-            amount0 = amount0 < minAmount * 10 ** 6 ? minAmount * 10 ** 6 : amount0;
-        } else {
-            amount0 = amount0 < minAmount * 10 ** 18 ? minAmount * 10 ** 18 : amount0;
-        }
-
-        if (Currency.unwrap(currency1) == address(usdc)) {
-            amount1 = amount1 < minAmount * 10 ** 6 ? minAmount * 10 ** 6 : amount1;
-        } else {
-            amount1 = amount1 < minAmount * 10 ** 18 ? minAmount * 10 ** 18 : amount1;
+            uint256 m = minNormal * 1e18;
+            return amt < m ? m : amt;
         }
     }
 
-    function _approveTokensForUser(Currency currency0, Currency currency1, uint256 amount0, uint256 amount1) internal {
-        // Approve tokens for Permit2 (used by PositionManager)
+    function _approveTokensForUser(Currency currency0, Currency currency1) internal {
+        // Approve underlying ERC20 -> Permit2 with unlimited allowance (called by user due to startBroadcast)
         address permit2Address = vm.envAddress("PERMIT2");
 
-        IERC20(Currency.unwrap(currency0)).approve(permit2Address, amount0);
-        IERC20(Currency.unwrap(currency1)).approve(permit2Address, amount1);
+        IERC20(Currency.unwrap(currency0)).approve(permit2Address, type(uint256).max);
+        IERC20(Currency.unwrap(currency1)).approve(permit2Address, type(uint256).max);
+
+        // Also approve PositionManager as spender in Permit2 with MAX + far future expiry
+        IPermit2 permit2 = IPermit2(permit2Address);
+        permit2.approve(Currency.unwrap(currency0), address(positionManager), type(uint160).max, type(uint48).max);
+        permit2.approve(Currency.unwrap(currency1), address(positionManager), type(uint160).max, type(uint48).max);
     }
 
     function _calculateTickRange(PoolConfig memory poolConfig, bool isWhale)
-        internal
-        pure
-        returns (int24 tickLower, int24 tickUpper)
+    internal
+    pure
+    returns (int24 tickLower, int24 tickUpper)
     {
-        int24 tickSpacing = poolConfig.tickSpacing;
+        int24 spacing = poolConfig.tickSpacing;
 
-        if (keccak256(abi.encodePacked(poolConfig.name)) == keccak256("WETH/USDC")) {
-            tickLower = isWhale ? int24(-1200) : int24(-600); // Whales provide wider ranges
-            tickUpper = isWhale ? int24(1200) : int24(600);
-        } else if (keccak256(abi.encodePacked(poolConfig.name)) == keccak256("WETH/DAI")) {
-            tickLower = isWhale ? int24(-1200) : int24(-600);
-            tickUpper = isWhale ? int24(1200) : int24(600);
-        } else if (keccak256(abi.encodePacked(poolConfig.name)) == keccak256("USDC/DAI")) {
-            // Tighter range for stablecoin pair
+        if (keccak256(abi.encodePacked(poolConfig.name)) == keccak256("USDC/DAI")) {
+            // stable, tighter
             tickLower = isWhale ? int24(-200) : int24(-100);
             tickUpper = isWhale ? int24(200) : int24(100);
-        } else if (keccak256(abi.encodePacked(poolConfig.name)) == keccak256("WBTC/WETH")) {
-            tickLower = isWhale ? int24(-1200) : int24(-600);
-            tickUpper = isWhale ? int24(1200) : int24(600);
-        } else {
-            // YIELD/WETH - wider range for new token
+        } else if (keccak256(abi.encodePacked(poolConfig.name)) == keccak256("YIELD/WETH")) {
+            // wider for new token
             tickLower = isWhale ? int24(-2000) : int24(-1000);
             tickUpper = isWhale ? int24(2000) : int24(1000);
+        } else {
+            // majors
+            tickLower = isWhale ? int24(-1200) : int24(-600);
+            tickUpper = isWhale ? int24(1200) : int24(600);
         }
 
-        // Align to tick spacing
-        tickLower = (tickLower / tickSpacing) * tickSpacing;
-        tickUpper = (tickUpper / tickSpacing) * tickSpacing;
+        // Align to spacing
+        tickLower = (tickLower / spacing) * spacing;
+        tickUpper = (tickUpper / spacing) * spacing;
 
-        // Ensure valid range
         require(tickLower < tickUpper, "Invalid tick range");
         require(tickLower >= -887272 && tickUpper <= 887272, "Tick out of bounds");
     }
@@ -413,77 +337,213 @@ contract SimulateUsers is Script {
         uint256 amount1Max,
         address recipient
     ) internal {
-        // Use PositionManager.modifyLiquidities() to mint position
+        // PositionManager.modifyLiquidities: pack actions + params
         bytes memory actions = abi.encodePacked(uint8(Actions.MINT_POSITION), uint8(Actions.SETTLE_PAIR));
 
-        bytes[] memory params = new bytes[](2);
+        bytes;
 
-        // MINT_POSITION parameters
+        // MINT_POSITION params
+        bytes[] memory params = new bytes[](2);
         params[0] = abi.encode(
             poolKey,
             tickLower,
             tickUpper,
-            uint256(100000), // liquidity amount - smaller for users than initial deployment
+            uint256(100000), // liquidity amount (smaller than bootstrap)
             amount0Max,
             amount1Max,
             recipient,
             abi.encode(recipient) // hookData
         );
 
-        // SETTLE_PAIR parameters
+        // SETTLE_PAIR params
         params[1] = abi.encode(poolKey.currency0, poolKey.currency1);
 
-        bytes memory unlockData = abi.encode(actions, params);
-
-        // Execute via modifyLiquidities
-        positionManager.modifyLiquidities(unlockData, block.timestamp + 60);
+        // Execute
+        positionManager.modifyLiquidities(abi.encode(actions, params), block.timestamp + 60);
     }
 
+    /* ---------------------------
+       USER PROFILE CONSTRUCTION
+       --------------------------- */
+    function _getUserProfile(uint256 accountIndex) internal view returns (UserProfile memory) {
+        // helper to build dynamic arrays
+        if (accountIndex >= 1 && accountIndex <= 3) {
+            // Conservative: stable + majors
+            uint256 n = 2;
+            PoolId[] memory pools = new PoolId[](n);
+            uint256[] memory ratios = new uint256[](n);
+            pools[0] = poolConfigs[idxUsdcDai].poolId; // USDC/DAI
+            pools[1] = poolConfigs[idxWethUsdc].poolId; // WETH/USDC
+            ratios[0] = 60;
+            ratios[1] = 40;
+
+            return UserProfile({
+                name: string.concat("Conservative_User_", vm.toString(accountIndex)),
+                riskProfile: "conservative",
+                riskLevel: 2,
+                gasThreshold: 20 gwei,
+                preferredPools: pools,
+                liquidityRatios: ratios,
+                isWhale: false
+            });
+        } else if (accountIndex >= 4 && accountIndex <= 6) {
+            // Moderate: diversified majors + stable
+            uint256 n = 3;
+            PoolId[] memory pools = new PoolId[](n);
+            uint256[] memory ratios = new uint256[](n);
+            pools[0] = poolConfigs[idxWethUsdc].poolId; // 40
+            pools[1] = poolConfigs[idxWethDai].poolId; // 35
+            pools[2] = poolConfigs[idxUsdcDai].poolId; // 25
+            ratios[0] = 40;
+            ratios[1] = 35;
+            ratios[2] = 25;
+
+            return UserProfile({
+                name: string.concat("Moderate_User_", vm.toString(accountIndex)),
+                riskProfile: "moderate",
+                riskLevel: 5,
+                gasThreshold: 50 gwei,
+                preferredPools: pools,
+                liquidityRatios: ratios,
+                isWhale: false
+            });
+        } else if (accountIndex >= 7 && accountIndex <= 8) {
+            // Aggressive: BTC/ETH + (optional) YIELD/WETH + WETH/USDC
+            if (hasYieldToken) {
+                uint256 n = 3;
+                PoolId[] memory pools = new PoolId[](n);
+                uint256[] memory ratios = new uint256[](n);
+                pools[0] = poolConfigs[idxWbtcWeth].poolId; // 40
+                pools[1] = poolConfigs[idxYieldWeth].poolId; // 35
+                pools[2] = poolConfigs[idxWethUsdc].poolId; // 25
+                ratios[0] = 40;
+                ratios[1] = 35;
+                ratios[2] = 25;
+
+                return UserProfile({
+                    name: string.concat("Aggressive_User_", vm.toString(accountIndex)),
+                    riskProfile: "aggressive",
+                    riskLevel: 8,
+                    gasThreshold: 100 gwei,
+                    preferredPools: pools,
+                    liquidityRatios: ratios,
+                    isWhale: false
+                });
+            } else {
+                // fallback if YIELD not available
+                uint256 n = 3;
+                PoolId[] memory pools = new PoolId[](n);
+                uint256[] memory ratios = new uint256[](n);
+                pools[0] = poolConfigs[idxWbtcWeth].poolId;
+                pools[1] = poolConfigs[idxWethUsdc].poolId;
+                pools[2] = poolConfigs[idxWethDai].poolId;
+                ratios[0] = 45;
+                ratios[1] = 35;
+                ratios[2] = 20;
+
+                return UserProfile({
+                    name: string.concat("Aggressive_User_", vm.toString(accountIndex)),
+                    riskProfile: "aggressive",
+                    riskLevel: 8,
+                    gasThreshold: 100 gwei,
+                    preferredPools: pools,
+                    liquidityRatios: ratios,
+                    isWhale: false
+                });
+            }
+        } else {
+            // Whale (acct 9)
+            if (hasYieldToken) {
+                uint256 n = 5;
+                PoolId[] memory pools = new PoolId[](n);
+                uint256[] memory ratios = new uint256[](n);
+                pools[0] = poolConfigs[idxWethUsdc].poolId; // 25
+                pools[1] = poolConfigs[idxWethDai].poolId;  // 25
+                pools[2] = poolConfigs[idxUsdcDai].poolId;  // 20
+                pools[3] = poolConfigs[idxWbtcWeth].poolId; // 15
+                pools[4] = poolConfigs[idxYieldWeth].poolId; // 15
+                ratios[0] = 25;
+                ratios[1] = 25;
+                ratios[2] = 20;
+                ratios[3] = 15;
+                ratios[4] = 15;
+
+                return UserProfile({
+                    name: "Whale_User_9",
+                    riskProfile: "whale",
+                    riskLevel: 6,
+                    gasThreshold: 75 gwei,
+                    preferredPools: pools,
+                    liquidityRatios: ratios,
+                    isWhale: true
+                });
+            } else {
+                uint256 n = 4;
+                PoolId[] memory pools = new PoolId[](n);
+                uint256[] memory ratios = new uint256[](n);
+                pools[0] = poolConfigs[idxWethUsdc].poolId; // 30
+                pools[1] = poolConfigs[idxWethDai].poolId;  // 30
+                pools[2] = poolConfigs[idxUsdcDai].poolId;  // 20
+                pools[3] = poolConfigs[idxWbtcWeth].poolId; // 20
+                ratios[0] = 30;
+                ratios[1] = 30;
+                ratios[2] = 20;
+                ratios[3] = 20;
+
+                return UserProfile({
+                    name: "Whale_User_9",
+                    riskProfile: "whale",
+                    riskLevel: 6,
+                    gasThreshold: 75 gwei,
+                    preferredPools: pools,
+                    liquidityRatios: ratios,
+                    isWhale: true
+                });
+            }
+        }
+    }
+
+    /* ---------------------------
+       SAVE INFO
+       --------------------------- */
     function _saveSimulationInfo() internal {
-        console.log("\n Saving simulation information...");
+        console.log(string.concat("\nSaving simulation information..."));
 
         string memory simulationInfo = "# User Simulation Results\n";
-        simulationInfo =
-            string.concat(simulationInfo, "TOTAL_SIMULATED_USERS=", vm.toString(testAccounts.length - 1), "\n");
+        simulationInfo = string.concat(simulationInfo, "TOTAL_SIMULATED_USERS=", vm.toString(testAccounts.length - 1), "\n");
         simulationInfo = string.concat(simulationInfo, "CONSERVATIVE_USERS=3\n");
         simulationInfo = string.concat(simulationInfo, "MODERATE_USERS=3\n");
         simulationInfo = string.concat(simulationInfo, "AGGRESSIVE_USERS=2\n");
         simulationInfo = string.concat(simulationInfo, "WHALE_USERS=1\n");
-        simulationInfo = string.concat(simulationInfo, "TOTAL_POOLS_WITH_USERS=5\n");
+        simulationInfo = string.concat(simulationInfo, "TOTAL_POOLS_WITH_USERS=", vm.toString(poolConfigs.length), "\n");
         simulationInfo = string.concat(simulationInfo, "SIMULATION_TIMESTAMP=", vm.toString(block.timestamp), "\n");
+        simulationInfo = string.concat(simulationInfo, "HAS_YIELD_TOKEN=", hasYieldToken ? "true\n" : "false\n");
 
-        // Add user details
         for (uint256 i = 1; i < testAccounts.length && i < 10; i++) {
             UserProfile memory profile = _getUserProfile(i);
-            simulationInfo =
-                string.concat(simulationInfo, "USER_", vm.toString(i), "_ADDRESS=", vm.toString(testAccounts[i]), "\n");
-            simulationInfo =
-                string.concat(simulationInfo, "USER_", vm.toString(i), "_PROFILE=", profile.riskProfile, "\n");
-            simulationInfo = string.concat(
-                simulationInfo, "USER_", vm.toString(i), "_RISK_LEVEL=", vm.toString(profile.riskLevel), "\n"
-            );
-            simulationInfo = string.concat(
-                simulationInfo, "USER_", vm.toString(i), "_POOLS=", vm.toString(profile.preferredPools.length), "\n"
-            );
+            simulationInfo = string.concat(simulationInfo, "USER_", vm.toString(i), "_ADDRESS=", vm.toString(testAccounts[i]), "\n");
+            simulationInfo = string.concat(simulationInfo, "USER_", vm.toString(i), "_PROFILE=", profile.riskProfile, "\n");
+            simulationInfo = string.concat(simulationInfo, "USER_", vm.toString(i), "_RISK_LEVEL=", vm.toString(profile.riskLevel), "\n");
+            simulationInfo = string.concat(simulationInfo, "USER_", vm.toString(i), "_POOLS=", vm.toString(profile.preferredPools.length), "\n");
         }
 
         vm.writeFile("./deployments/simulation-users.env", simulationInfo);
-        console.log("Simulation info saved to: ./deployments/simulation-users.env");
+        console.log(string.concat("Simulation info saved to: ./deployments/simulation-users.env"));
     }
 
-    // Helper functions
+    /* ---------------------------
+       HELPERS
+       --------------------------- */
     function _createPoolKey(Currency currency0, Currency currency1, uint24 fee, int24 tickSpacing)
-        internal
-        view
-        returns (PoolKey memory)
+    internal
+    view
+    returns (PoolKey memory)
     {
-        // Sort currencies
+        // sort currencies
         if (Currency.unwrap(currency0) > Currency.unwrap(currency1)) {
             (currency0, currency1) = (currency1, currency0);
         }
-
-        return
-            PoolKey({currency0: currency0, currency1: currency1, fee: fee, tickSpacing: tickSpacing, hooks: yieldHook});
+        return PoolKey({currency0: currency0, currency1: currency1, fee: fee, tickSpacing: tickSpacing, hooks: yieldHook});
     }
 
     function _getPoolConfig(PoolId poolId) internal view returns (PoolConfig memory) {

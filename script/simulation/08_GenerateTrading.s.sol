@@ -28,11 +28,11 @@ contract GenerateTrading is Script {
     YieldMaximizerHook public yieldHook;
 
     // Token contracts (from existing deployment)
-    MockERC20 public weth;
-    MockERC20 public usdc;
-    MockERC20 public dai;
-    MockERC20 public wbtc;
-    MockERC20 public yieldToken;
+    IERC20 public weth;
+    IERC20 public usdc;
+    IERC20 public dai;
+    IERC20 public wbtc;
+
 
     // Trading accounts (from existing distribution)
     address[] public traders;
@@ -123,11 +123,10 @@ contract GenerateTrading is Script {
         console.log(string.concat("  SwapRouter: ", vm.toString(address(swapRouter))));
 
         // Load token contracts
-        weth = MockERC20(vm.envAddress("TOKEN_WETH"));
-        usdc = MockERC20(vm.envAddress("TOKEN_USDC"));
-        dai = MockERC20(vm.envAddress("TOKEN_DAI"));
-        wbtc = MockERC20(vm.envAddress("TOKEN_WBTC"));
-        yieldToken = MockERC20(vm.envAddress("TOKEN_YIELD"));
+        weth = IERC20(vm.envAddress("TOKEN_WETH"));
+        usdc = IERC20(vm.envAddress("TOKEN_USDC"));
+        dai = IERC20(vm.envAddress("TOKEN_DAI"));
+        wbtc = IERC20(vm.envAddress("TOKEN_WBTC"));
 
         console.log("All contracts loaded successfully");
     }
@@ -228,22 +227,22 @@ contract GenerateTrading is Script {
         );
 
         // YIELD/WETH Pool - New token with higher volatility
-        PoolKey memory yieldWethKey =
-            _createPoolKey(Currency.wrap(address(yieldToken)), Currency.wrap(address(weth)), 10000, 200);
-        poolConfigs.push(
-            PoolConfig({
-                name: "YIELD/WETH",
-                poolKey: yieldWethKey,
-                poolId: yieldWethKey.toId(),
-                fee: 10000,
-                token0: yieldWethKey.currency0,
-                token1: yieldWethKey.currency1,
-                token0Decimals: _getTokenDecimals(yieldWethKey.currency0),
-                token1Decimals: _getTokenDecimals(yieldWethKey.currency1),
-                baseTradeSize0: 1000 * 10 ** 18, // 1000 YIELD base size
-                baseTradeSize1: 0.5 * 10 ** 18 // 0.5 WETH base size
-            })
-        );
+//        PoolKey memory yieldWethKey =
+//            _createPoolKey(Currency.wrap(address(yieldToken)), Currency.wrap(address(weth)), 10000, 200);
+//        poolConfigs.push(
+//            PoolConfig({
+//                name: "YIELD/WETH",
+//                poolKey: yieldWethKey,
+//                poolId: yieldWethKey.toId(),
+//                fee: 10000,
+//                token0: yieldWethKey.currency0,
+//                token1: yieldWethKey.currency1,
+//                token0Decimals: _getTokenDecimals(yieldWethKey.currency0),
+//                token1Decimals: _getTokenDecimals(yieldWethKey.currency1),
+//                baseTradeSize0: 1000 * 10 ** 18, // 1000 YIELD base size
+//                baseTradeSize1: 0.5 * 10 ** 18 // 0.5 WETH base size
+//            })
+//        );
 
         console.log(string.concat("Loaded ", vm.toString(poolConfigs.length), " pool configurations"));
     }
@@ -331,16 +330,14 @@ contract GenerateTrading is Script {
         // Weight pool selection for realistic volume distribution
         uint256 poolSelector = seed % 100;
 
-        if (poolSelector < 35) {
-            return poolConfigs[0]; // WETH/USDC - 35% of trades
-        } else if (poolSelector < 60) {
-            return poolConfigs[1]; // WETH/DAI - 25% of trades
-        } else if (poolSelector < 75) {
+        if (poolSelector < 40) {
+            return poolConfigs[0]; // WETH/USDC - 40% of trades
+        } else if (poolSelector < 70) {
+            return poolConfigs[1]; // WETH/DAI - 30% of trades
+        } else if (poolSelector < 85) {
             return poolConfigs[2]; // USDC/DAI - 15% of trades
-        } else if (poolSelector < 90) {
-            return poolConfigs[3]; // WBTC/WETH - 15% of trades
         } else {
-            return poolConfigs[4]; // YIELD/WETH - 10% of trades
+            return poolConfigs[3]; // WBTC/WETH - 15% of trades
         }
     }
 
@@ -414,7 +411,8 @@ contract GenerateTrading is Script {
             } else if (keccak256(abi.encodePacked(pool.name)) == keccak256("WBTC/WETH")) {
                 estimatedOut = amountIn * 20 * 10 ** 10; // ~20 WETH per WBTC
             } else {
-                estimatedOut = amountIn / 100; // YIELD/WETH ~100:1
+                // Default calculation for unknown pools
+                estimatedOut = amountIn;
             }
         } else {
             // Reverse calculations
@@ -427,7 +425,8 @@ contract GenerateTrading is Script {
             } else if (keccak256(abi.encodePacked(pool.name)) == keccak256("WBTC/WETH")) {
                 estimatedOut = amountIn / (20 * 10 ** 10); // WETH to WBTC
             } else {
-                estimatedOut = amountIn * 100; // WETH to YIELD
+                // Default calculation for unknown pools
+                estimatedOut = amountIn;
             }
         }
 
