@@ -30,12 +30,8 @@ contract DeployYieldHook is Script {
         console2.log("Mining hook address with flags:", flags);
 
         // Use HookMiner to find a valid address and salt
-        (address hookAddress, bytes32 salt) = HookMiner.find(
-            CREATE2_FACTORY,
-            flags,
-            type(YieldMaximizerHook).creationCode,
-            constructorArgs
-        );
+        (address hookAddress, bytes32 salt) =
+            HookMiner.find(CREATE2_FACTORY, flags, type(YieldMaximizerHook).creationCode, constructorArgs);
 
         console2.log("Mined hook address:", hookAddress);
         console2.log("Using salt:", vm.toString(salt));
@@ -55,9 +51,7 @@ contract DeployYieldHook is Script {
         vm.stopBroadcast();
 
         // Save hook address
-        vm.writeFile("deployments/fork-hook.env",
-            string.concat("HOOK_ADDRESS=", vm.toString(address(hook)), "\n")
-        );
+        vm.writeFile("deployments/fork-hook.env", string.concat("HOOK_ADDRESS=", vm.toString(address(hook)), "\n"));
 
         console2.log("YieldMaximizerHook deployed and verified");
     }

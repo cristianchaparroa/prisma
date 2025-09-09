@@ -26,10 +26,10 @@ contract FundAccounts is Script {
     address[] public testAccounts;
 
     struct FundingAmounts {
-        uint256 weth;  // 18 decimals
-        uint256 usdc;  // 6 decimals
-        uint256 dai;   // 18 decimals
-        uint256 wbtc;  // 8 decimals
+        uint256 weth; // 18 decimals
+        uint256 usdc; // 6 decimals
+        uint256 dai; // 18 decimals
+        uint256 wbtc; // 8 decimals
     }
 
     function run() external {
@@ -41,29 +41,29 @@ contract FundAccounts is Script {
         _loadContracts();
         _loadTestAccounts();
 
-        // Start broadcasting transactions 
+        // Start broadcasting transactions
         vm.startBroadcast(deployerPrivateKey);
 
         // Define funding amounts per user type
         FundingAmounts memory smallUser = FundingAmounts({
-            weth: 20 * 10**18,      // 20 WETH (~$50K)
-            usdc: 50_000 * 10**6,   // 50K USDC
-            dai: 50_000 * 10**18,   // 50K DAI
-            wbtc: 1 * 10**8         // 1 WBTC (~$60K)
+            weth: 20 * 10 ** 18, // 20 WETH (~$50K)
+            usdc: 50_000 * 10 ** 6, // 50K USDC
+            dai: 50_000 * 10 ** 18, // 50K DAI
+            wbtc: 1 * 10 ** 8 // 1 WBTC (~$60K)
         });
 
         FundingAmounts memory mediumUser = FundingAmounts({
-            weth: 100 * 10**18,     // 100 WETH (~$250K)
-            usdc: 250_000 * 10**6,  // 250K USDC
-            dai: 250_000 * 10**18,  // 250K DAI
-            wbtc: 5 * 10**8         // 5 WBTC (~$300K)
+            weth: 100 * 10 ** 18, // 100 WETH (~$250K)
+            usdc: 250_000 * 10 ** 6, // 250K USDC
+            dai: 250_000 * 10 ** 18, // 250K DAI
+            wbtc: 5 * 10 ** 8 // 5 WBTC (~$300K)
         });
 
         FundingAmounts memory largeUser = FundingAmounts({
-            weth: 500 * 10**18,     // 500 WETH (~$1.25M)
-            usdc: 1_000_000 * 10**6, // 1M USDC
-            dai: 1_000_000 * 10**18, // 1M DAI
-            wbtc: 20 * 10**8        // 20 WBTC (~$1.2M)
+            weth: 500 * 10 ** 18, // 500 WETH (~$1.25M)
+            usdc: 1_000_000 * 10 ** 6, // 1M USDC
+            dai: 1_000_000 * 10 ** 18, // 1M DAI
+            wbtc: 20 * 10 ** 8 // 20 WBTC (~$1.2M)
         });
 
         // Fund accounts (skip deployer account 0)
@@ -71,11 +71,11 @@ contract FundAccounts is Script {
             FundingAmounts memory amounts;
 
             if (i <= 6) {
-                amounts = smallUser;    // Accounts 1-6: Small users
+                amounts = smallUser; // Accounts 1-6: Small users
             } else if (i <= 8) {
-                amounts = mediumUser;   // Accounts 7-8: Medium users
+                amounts = mediumUser; // Accounts 7-8: Medium users
             } else {
-                amounts = largeUser;    // Account 9: Large whale user
+                amounts = largeUser; // Account 9: Large whale user
             }
 
             _fundAccount(testAccounts[i], amounts, i);
@@ -109,16 +109,16 @@ contract FundAccounts is Script {
 
     function _loadTestAccounts() internal {
         // Load test accounts from environment
-        testAccounts.push(vm.envAddress("ANVIL_ADDRESS"));      // Account 0
-        testAccounts.push(vm.envAddress("ACCOUNT_1_ADDRESS"));  // Account 1
-        testAccounts.push(vm.envAddress("ACCOUNT_2_ADDRESS"));  // Account 2
-        testAccounts.push(vm.envAddress("ACCOUNT_3_ADDRESS"));  // Account 3
-        testAccounts.push(vm.envAddress("ACCOUNT_4_ADDRESS"));  // Account 4
-        testAccounts.push(vm.envAddress("ACCOUNT_5_ADDRESS"));  // Account 5
-        testAccounts.push(vm.envAddress("ACCOUNT_6_ADDRESS"));  // Account 6
-        testAccounts.push(vm.envAddress("ACCOUNT_7_ADDRESS"));  // Account 7
-        testAccounts.push(vm.envAddress("ACCOUNT_8_ADDRESS"));  // Account 8
-        testAccounts.push(vm.envAddress("ACCOUNT_9_ADDRESS"));  // Account 9
+        testAccounts.push(vm.envAddress("ANVIL_ADDRESS")); // Account 0
+        testAccounts.push(vm.envAddress("ACCOUNT_1_ADDRESS")); // Account 1
+        testAccounts.push(vm.envAddress("ACCOUNT_2_ADDRESS")); // Account 2
+        testAccounts.push(vm.envAddress("ACCOUNT_3_ADDRESS")); // Account 3
+        testAccounts.push(vm.envAddress("ACCOUNT_4_ADDRESS")); // Account 4
+        testAccounts.push(vm.envAddress("ACCOUNT_5_ADDRESS")); // Account 5
+        testAccounts.push(vm.envAddress("ACCOUNT_6_ADDRESS")); // Account 6
+        testAccounts.push(vm.envAddress("ACCOUNT_7_ADDRESS")); // Account 7
+        testAccounts.push(vm.envAddress("ACCOUNT_8_ADDRESS")); // Account 8
+        testAccounts.push(vm.envAddress("ACCOUNT_9_ADDRESS")); // Account 9
 
         console.log("Loaded", testAccounts.length, "test accounts");
     }
@@ -162,10 +162,10 @@ contract FundAccounts is Script {
         // Resume broadcasting
         vm.startBroadcast();
 
-        console.log("WETH:", amounts.weth / 10**18);
-        console.log("USDC:", amounts.usdc / 10**6);
-        console.log("DAI:", amounts.dai / 10**18);
-        console.log("WBTC:", amounts.wbtc / 10**8);
+        console.log("WETH:", amounts.weth / 10 ** 18);
+        console.log("USDC:", amounts.usdc / 10 ** 6);
+        console.log("DAI:", amounts.dai / 10 ** 18);
+        console.log("WBTC:", amounts.wbtc / 10 ** 8);
 
         // Verify balances
         require(weth.balanceOf(account) >= amounts.weth, "WETH transfer failed");

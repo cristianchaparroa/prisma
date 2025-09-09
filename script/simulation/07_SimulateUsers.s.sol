@@ -32,7 +32,7 @@ contract SimulateUsers is Script {
     IERC20 public dai;
     IERC20 public wbtc;
     // IERC20 public yieldToken; // optional, loaded if TOKEN_YIELD is set
-    bool   public hasYieldToken;
+    bool public hasYieldToken;
 
     // Test accounts
     address[] public testAccounts;
@@ -92,26 +92,26 @@ contract SimulateUsers is Script {
     function _loadContracts() internal {
         console.log("Loading contracts from existing deployment...");
 
-        poolManager     = IPoolManager(vm.envAddress("POOL_MANAGER"));
+        poolManager = IPoolManager(vm.envAddress("POOL_MANAGER"));
         positionManager = IPositionManager(vm.envAddress("POSITION_MANAGER"));
-        yieldHook       = YieldMaximizerHook(vm.envAddress("HOOK_ADDRESS"));
+        yieldHook = YieldMaximizerHook(vm.envAddress("HOOK_ADDRESS"));
 
         weth = IERC20(vm.envAddress("TOKEN_WETH"));
         usdc = IERC20(vm.envAddress("TOKEN_USDC"));
-        dai  = IERC20(vm.envAddress("TOKEN_DAI"));
+        dai = IERC20(vm.envAddress("TOKEN_DAI"));
         wbtc = IERC20(vm.envAddress("TOKEN_WBTC"));
 
         // Optional YIELD token (only if env present)
-//        try vm.envAddress("TOKEN_YIELD") returns (address y) {
-//            if (y != address(0)) {
-//                yieldToken = IERC20(y);
-//                hasYieldToken = true;
-//            } else {
-//                hasYieldToken = false;
-//            }
-//        } catch {
-//            hasYieldToken = false;
-//        }
+        //        try vm.envAddress("TOKEN_YIELD") returns (address y) {
+        //            if (y != address(0)) {
+        //                yieldToken = IERC20(y);
+        //                hasYieldToken = true;
+        //            } else {
+        //                hasYieldToken = false;
+        //            }
+        //        } catch {
+        //            hasYieldToken = false;
+        //        }
 
         console.log(string.concat("  PoolManager:        ", vm.toString(address(poolManager))));
         console.log(string.concat("  PositionManager:    ", vm.toString(address(positionManager))));
@@ -120,9 +120,9 @@ contract SimulateUsers is Script {
         console.log(string.concat("  USDC:               ", vm.toString(address(usdc))));
         console.log(string.concat("  DAI:                ", vm.toString(address(dai))));
         console.log(string.concat("  WBTC:               ", vm.toString(address(wbtc))));
-//        if (hasYieldToken) {
-//            console.log(string.concat("  YIELD:              ", vm.toString(address(yieldToken))));
-//        }
+        //        if (hasYieldToken) {
+        //            console.log(string.concat("  YIELD:              ", vm.toString(address(yieldToken))));
+        //        }
     }
 
     function _loadTestAccounts() internal {
@@ -137,7 +137,11 @@ contract SimulateUsers is Script {
                 uint256 privateKey = vm.envUint(string.concat("ACCOUNT_", vm.toString(i), "_PRIVATE_KEY"));
                 testPrivateKeys.push(privateKey);
             } catch {
-                console.log(string.concat("Account ", vm.toString(i), " not found, stopping at ", vm.toString(i - 1), " accounts"));
+                console.log(
+                    string.concat(
+                        "Account ", vm.toString(i), " not found, stopping at ", vm.toString(i - 1), " accounts"
+                    )
+                );
                 break;
             }
         }
@@ -149,7 +153,8 @@ contract SimulateUsers is Script {
         console.log("Loading pool configurations...");
 
         // WETH/USDC 0.3% / 60
-        PoolKey memory wethUsdcKey = _createPoolKey(Currency.wrap(address(weth)), Currency.wrap(address(usdc)), 3000, 60);
+        PoolKey memory wethUsdcKey =
+            _createPoolKey(Currency.wrap(address(weth)), Currency.wrap(address(usdc)), 3000, 60);
         idxWethUsdc = poolConfigs.length;
         poolConfigs.push(PoolConfig("WETH/USDC", wethUsdcKey, wethUsdcKey.toId(), 60, 3000));
 
@@ -164,16 +169,17 @@ contract SimulateUsers is Script {
         poolConfigs.push(PoolConfig("USDC/DAI", usdcDaiKey, usdcDaiKey.toId(), 10, 500));
 
         // WBTC/WETH 0.3% / 60
-        PoolKey memory wbtcWethKey = _createPoolKey(Currency.wrap(address(wbtc)), Currency.wrap(address(weth)), 3000, 60);
+        PoolKey memory wbtcWethKey =
+            _createPoolKey(Currency.wrap(address(wbtc)), Currency.wrap(address(weth)), 3000, 60);
         idxWbtcWeth = poolConfigs.length;
         poolConfigs.push(PoolConfig("WBTC/WETH", wbtcWethKey, wbtcWethKey.toId(), 60, 3000));
 
         // Optional YIELD/WETH 1% / 200 (only if TOKEN_YIELD provided)
-//        if (hasYieldToken) {
-//            PoolKey memory yieldWethKey = _createPoolKey(Currency.wrap(address(yieldToken)), Currency.wrap(address(weth)), 10_000, 200);
-//            idxYieldWeth = poolConfigs.length;
-//            poolConfigs.push(PoolConfig("YIELD/WETH", yieldWethKey, yieldWethKey.toId(), 200, 10_000));
-//        }
+        //        if (hasYieldToken) {
+        //            PoolKey memory yieldWethKey = _createPoolKey(Currency.wrap(address(yieldToken)), Currency.wrap(address(weth)), 10_000, 200);
+        //            idxYieldWeth = poolConfigs.length;
+        //            poolConfigs.push(PoolConfig("YIELD/WETH", yieldWethKey, yieldWethKey.toId(), 200, 10_000));
+        //        }
 
         console.log(string.concat("Loaded ", vm.toString(poolConfigs.length), " pool configurations"));
     }
@@ -196,10 +202,10 @@ contract SimulateUsers is Script {
         // Check if strategy is already active before activating
         PoolId primaryPoolId = profile.preferredPools[0];
         console.log(string.concat("  Checking strategy for primary pool: ", _getPoolName(primaryPoolId)));
-        
+
         // Get current user strategy to check if already active
         YieldMaximizerHook.UserStrategy memory currentStrategy = yieldHook.getUserStrategy(userAddress);
-        
+
         if (currentStrategy.isActive) {
             console.log("  Strategy already active - updating parameters instead");
             yieldHook.updateStrategy(profile.gasThreshold, profile.riskLevel);
@@ -210,7 +216,9 @@ contract SimulateUsers is Script {
 
         // Provide liquidity across preferred pools
         for (uint256 i = 0; i < profile.preferredPools.length; i++) {
-            _provideLiquidityForUser(userAddress, profile.preferredPools[i], profile.liquidityRatios[i], profile.isWhale);
+            _provideLiquidityForUser(
+                userAddress, profile.preferredPools[i], profile.liquidityRatios[i], profile.isWhale
+            );
         }
 
         vm.stopBroadcast();
@@ -221,7 +229,9 @@ contract SimulateUsers is Script {
     function _provideLiquidityForUser(address user, PoolId poolId, uint256 ratio, bool isWhale) internal {
         PoolConfig memory poolConfig = _getPoolConfig(poolId);
 
-        console.log(string.concat("    Adding liquidity to ", poolConfig.name, " with ", vm.toString(ratio), "% allocation"));
+        console.log(
+            string.concat("    Adding liquidity to ", poolConfig.name, " with ", vm.toString(ratio), "% allocation")
+        );
 
         (uint256 amount0, uint256 amount1) = _calculateUserLiquidityAmounts(user, poolConfig, ratio, isWhale);
 
@@ -246,9 +256,9 @@ contract SimulateUsers is Script {
     }
 
     function _calculateUserLiquidityAmounts(address user, PoolConfig memory poolConfig, uint256 ratio, bool isWhale)
-    internal
-    view
-    returns (uint256 amount0, uint256 amount1)
+        internal
+        view
+        returns (uint256 amount0, uint256 amount1)
     {
         Currency c0 = poolConfig.poolKey.currency0;
         Currency c1 = poolConfig.poolKey.currency1;
@@ -272,8 +282,8 @@ contract SimulateUsers is Script {
 
     function _applyMin(uint256 amt, address token) internal view returns (uint256) {
         // reasonable minimums
-        uint256 minNormal = 100;   // 100 units (in token native decimals)
-        uint256 minWhale  = 1000;  // 1000 units (in token native decimals)
+        uint256 minNormal = 100; // 100 units (in token native decimals)
+        uint256 minWhale = 1000; // 1000 units (in token native decimals)
         // use minNormal as baseline to avoid tiny amounts
         if (token == address(usdc)) {
             uint256 m = minNormal * 1e6;
@@ -301,9 +311,9 @@ contract SimulateUsers is Script {
     }
 
     function _calculateTickRange(PoolConfig memory poolConfig, bool isWhale)
-    internal
-    pure
-    returns (int24 tickLower, int24 tickUpper)
+        internal
+        pure
+        returns (int24 tickLower, int24 tickUpper)
     {
         int24 spacing = poolConfig.tickSpacing;
 
@@ -458,8 +468,8 @@ contract SimulateUsers is Script {
                 PoolId[] memory pools = new PoolId[](n);
                 uint256[] memory ratios = new uint256[](n);
                 pools[0] = poolConfigs[idxWethUsdc].poolId; // 25
-                pools[1] = poolConfigs[idxWethDai].poolId;  // 25
-                pools[2] = poolConfigs[idxUsdcDai].poolId;  // 20
+                pools[1] = poolConfigs[idxWethDai].poolId; // 25
+                pools[2] = poolConfigs[idxUsdcDai].poolId; // 20
                 pools[3] = poolConfigs[idxWbtcWeth].poolId; // 15
                 pools[4] = poolConfigs[idxYieldWeth].poolId; // 15
                 ratios[0] = 25;
@@ -482,8 +492,8 @@ contract SimulateUsers is Script {
                 PoolId[] memory pools = new PoolId[](n);
                 uint256[] memory ratios = new uint256[](n);
                 pools[0] = poolConfigs[idxWethUsdc].poolId; // 30
-                pools[1] = poolConfigs[idxWethDai].poolId;  // 30
-                pools[2] = poolConfigs[idxUsdcDai].poolId;  // 20
+                pools[1] = poolConfigs[idxWethDai].poolId; // 30
+                pools[2] = poolConfigs[idxUsdcDai].poolId; // 20
                 pools[3] = poolConfigs[idxWbtcWeth].poolId; // 20
                 ratios[0] = 30;
                 ratios[1] = 30;
@@ -510,7 +520,8 @@ contract SimulateUsers is Script {
         console.log(string.concat("\nSaving simulation information..."));
 
         string memory simulationInfo = "# User Simulation Results\n";
-        simulationInfo = string.concat(simulationInfo, "TOTAL_SIMULATED_USERS=", vm.toString(testAccounts.length - 1), "\n");
+        simulationInfo =
+            string.concat(simulationInfo, "TOTAL_SIMULATED_USERS=", vm.toString(testAccounts.length - 1), "\n");
         simulationInfo = string.concat(simulationInfo, "CONSERVATIVE_USERS=3\n");
         simulationInfo = string.concat(simulationInfo, "MODERATE_USERS=3\n");
         simulationInfo = string.concat(simulationInfo, "AGGRESSIVE_USERS=2\n");
@@ -521,10 +532,16 @@ contract SimulateUsers is Script {
 
         for (uint256 i = 1; i < testAccounts.length && i < 10; i++) {
             UserProfile memory profile = _getUserProfile(i);
-            simulationInfo = string.concat(simulationInfo, "USER_", vm.toString(i), "_ADDRESS=", vm.toString(testAccounts[i]), "\n");
-            simulationInfo = string.concat(simulationInfo, "USER_", vm.toString(i), "_PROFILE=", profile.riskProfile, "\n");
-            simulationInfo = string.concat(simulationInfo, "USER_", vm.toString(i), "_RISK_LEVEL=", vm.toString(profile.riskLevel), "\n");
-            simulationInfo = string.concat(simulationInfo, "USER_", vm.toString(i), "_POOLS=", vm.toString(profile.preferredPools.length), "\n");
+            simulationInfo =
+                string.concat(simulationInfo, "USER_", vm.toString(i), "_ADDRESS=", vm.toString(testAccounts[i]), "\n");
+            simulationInfo =
+                string.concat(simulationInfo, "USER_", vm.toString(i), "_PROFILE=", profile.riskProfile, "\n");
+            simulationInfo = string.concat(
+                simulationInfo, "USER_", vm.toString(i), "_RISK_LEVEL=", vm.toString(profile.riskLevel), "\n"
+            );
+            simulationInfo = string.concat(
+                simulationInfo, "USER_", vm.toString(i), "_POOLS=", vm.toString(profile.preferredPools.length), "\n"
+            );
         }
 
         vm.writeFile("./deployments/simulation-users.env", simulationInfo);
@@ -535,15 +552,16 @@ contract SimulateUsers is Script {
        HELPERS
        --------------------------- */
     function _createPoolKey(Currency currency0, Currency currency1, uint24 fee, int24 tickSpacing)
-    internal
-    view
-    returns (PoolKey memory)
+        internal
+        view
+        returns (PoolKey memory)
     {
         // sort currencies
         if (Currency.unwrap(currency0) > Currency.unwrap(currency1)) {
             (currency0, currency1) = (currency1, currency0);
         }
-        return PoolKey({currency0: currency0, currency1: currency1, fee: fee, tickSpacing: tickSpacing, hooks: yieldHook});
+        return
+            PoolKey({currency0: currency0, currency1: currency1, fee: fee, tickSpacing: tickSpacing, hooks: yieldHook});
     }
 
     function _getPoolConfig(PoolId poolId) internal view returns (PoolConfig memory) {

@@ -32,7 +32,6 @@ contract GenerateTrading is Script {
     IERC20 public dai;
     IERC20 public wbtc;
 
-
     // Trading accounts (from existing distribution)
     address[] public traders;
     uint256[] public traderPrivateKeys;
@@ -232,22 +231,22 @@ contract GenerateTrading is Script {
         );
 
         // YIELD/WETH Pool - New token with higher volatility
-//        PoolKey memory yieldWethKey =
-//            _createPoolKey(Currency.wrap(address(yieldToken)), Currency.wrap(address(weth)), 10000, 200);
-//        poolConfigs.push(
-//            PoolConfig({
-//                name: "YIELD/WETH",
-//                poolKey: yieldWethKey,
-//                poolId: yieldWethKey.toId(),
-//                fee: 10000,
-//                token0: yieldWethKey.currency0,
-//                token1: yieldWethKey.currency1,
-//                token0Decimals: _getTokenDecimals(yieldWethKey.currency0),
-//                token1Decimals: _getTokenDecimals(yieldWethKey.currency1),
-//                baseTradeSize0: 1000 * 10 ** 18, // 1000 YIELD base size
-//                baseTradeSize1: 0.5 * 10 ** 18 // 0.5 WETH base size
-//            })
-//        );
+        //        PoolKey memory yieldWethKey =
+        //            _createPoolKey(Currency.wrap(address(yieldToken)), Currency.wrap(address(weth)), 10000, 200);
+        //        poolConfigs.push(
+        //            PoolConfig({
+        //                name: "YIELD/WETH",
+        //                poolKey: yieldWethKey,
+        //                poolId: yieldWethKey.toId(),
+        //                fee: 10000,
+        //                token0: yieldWethKey.currency0,
+        //                token1: yieldWethKey.currency1,
+        //                token0Decimals: _getTokenDecimals(yieldWethKey.currency0),
+        //                token1Decimals: _getTokenDecimals(yieldWethKey.currency1),
+        //                baseTradeSize0: 1000 * 10 ** 18, // 1000 YIELD base size
+        //                baseTradeSize1: 0.5 * 10 ** 18 // 0.5 WETH base size
+        //            })
+        //        );
 
         console.log(string.concat("Loaded ", vm.toString(poolConfigs.length), " pool configurations"));
     }
@@ -291,7 +290,7 @@ contract GenerateTrading is Script {
 
             // Calculate trade size based on trader type and pool
             uint256 amountIn = _calculateTradeSize(trader, pool, seed);
-            
+
             // Debug log for trade amounts
             if (i < 5) {
                 console.log(string.concat("Trade ", vm.toString(i), " amount: ", vm.toString(amountIn)));
@@ -305,7 +304,14 @@ contract GenerateTrading is Script {
                 } else {
                     Currency tokenIn = zeroForOne ? pool.token0 : pool.token1;
                     uint256 balance = IERC20(Currency.unwrap(tokenIn)).balanceOf(trader);
-                    console.log(string.concat("Skipping trade - insufficient balance. Required: ", vm.toString(amountIn), ", Available: ", vm.toString(balance)));
+                    console.log(
+                        string.concat(
+                            "Skipping trade - insufficient balance. Required: ",
+                            vm.toString(amountIn),
+                            ", Available: ",
+                            vm.toString(balance)
+                        )
+                    );
                 }
                 continue;
             }
@@ -373,7 +379,7 @@ contract GenerateTrading is Script {
         address tokenAddress = Currency.unwrap(tokenIn);
 
         uint256 baseAmount;
-        
+
         // Set base amounts by token type
         if (tokenAddress == address(usdc)) {
             baseAmount = isWhale ? 2500 * 10 ** 6 : 100 * 10 ** 6; // Whale: $2500, Regular: $100
@@ -396,7 +402,7 @@ contract GenerateTrading is Script {
     {
         Currency tokenIn = zeroForOne ? pool.token0 : pool.token1;
         uint256 balance = IERC20(Currency.unwrap(tokenIn)).balanceOf(trader);
-        
+
         // Require 20% buffer above trade amount to account for potential price impact
         uint256 requiredBalance = (amountIn * 120) / 100;
         return balance >= requiredBalance;
@@ -455,7 +461,7 @@ contract GenerateTrading is Script {
                 _formatAmount(trade.amountIn, trade.zeroForOne ? trade.pool.token0Decimals : trade.pool.token1Decimals)
             )
         );
-        
+
         // Check if this is a zero amount trade - skip it
         if (trade.amountIn == 0) {
             console.log("  Skipping zero amount trade");
@@ -479,21 +485,21 @@ contract GenerateTrading is Script {
             vm.stopBroadcast();
             return;
         }
-        
+
         // Execute swap with proper price limits
         uint160 sqrtPriceLimitX96;
         if (trade.zeroForOne) {
             // Minimum price limit for zeroForOne (token0 -> token1)
             sqrtPriceLimitX96 = 4295128740; // Very low price limit
         } else {
-            // Maximum price limit for oneForZero (token1 -> token0) 
+            // Maximum price limit for oneForZero (token1 -> token0)
             sqrtPriceLimitX96 = 1461446703485210103287273052203988822378723970341; // Very high price limit
         }
-        
+
         // Try swap with smaller amount if original fails
         uint256 attemptAmount = trade.amountIn;
         bool swapSuccessful = false;
-        
+
         for (uint256 attempt = 0; attempt < 3 && !swapSuccessful; attempt++) {
             try swapRouter.swap(
                 trade.pool.poolKey,
@@ -517,7 +523,7 @@ contract GenerateTrading is Script {
                 uint256 feeAmount = attemptAmount * trade.pool.fee / 1000000;
                 stats.totalFeesGenerated += feeAmount;
                 stats.poolVolume[trade.pool.poolId] += attemptAmount;
-                
+
                 break; // Exit retry loop
             } catch Error(string memory reason) {
                 if (attempt < 2) {
@@ -526,7 +532,11 @@ contract GenerateTrading is Script {
                     console.log(string.concat("  Retrying with smaller amount: ", vm.toString(attemptAmount)));
                 } else {
                     console.log(string.concat(" Trade failed after retries: ", reason));
-                    console.log(string.concat("   Token balance: ", vm.toString(IERC20(Currency.unwrap(tokenIn)).balanceOf(trade.trader))));
+                    console.log(
+                        string.concat(
+                            "   Token balance: ", vm.toString(IERC20(Currency.unwrap(tokenIn)).balanceOf(trade.trader))
+                        )
+                    );
                 }
             } catch (bytes memory lowLevelData) {
                 if (attempt < 2) {
@@ -535,7 +545,11 @@ contract GenerateTrading is Script {
                     console.log(string.concat("  Retrying with smaller amount: ", vm.toString(attemptAmount)));
                 } else {
                     console.log(" Trade failed after retries: Unknown error");
-                    console.log(string.concat("   Token balance: ", vm.toString(IERC20(Currency.unwrap(tokenIn)).balanceOf(trade.trader))));
+                    console.log(
+                        string.concat(
+                            "   Token balance: ", vm.toString(IERC20(Currency.unwrap(tokenIn)).balanceOf(trade.trader))
+                        )
+                    );
                     if (lowLevelData.length > 0) {
                         console.log("   Low level error data available");
                     }

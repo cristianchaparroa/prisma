@@ -23,7 +23,7 @@ contract CreateMainnetPools is Script {
         pools[0] = PoolKey({
             currency0: Currency.wrap(vm.envAddress("TOKEN_USDC")),
             currency1: Currency.wrap(vm.envAddress("TOKEN_WETH")),
-            fee: 3000,        // 0.3%
+            fee: 3000, // 0.3%
             tickSpacing: 60,
             hooks: hook
         });
@@ -41,7 +41,7 @@ contract CreateMainnetPools is Script {
         pools[2] = PoolKey({
             currency0: Currency.wrap(vm.envAddress("TOKEN_DAI")),
             currency1: Currency.wrap(vm.envAddress("TOKEN_USDC")),
-            fee: 500,         // 0.05%
+            fee: 500, // 0.05%
             tickSpacing: 10,
             hooks: hook
         });
@@ -56,9 +56,9 @@ contract CreateMainnetPools is Script {
         });
 
         // Initialize all pools with market prices
-        initializePool(poolManager, pools[0], 79228162514264337593543950336);  // ~$3000 ETH
-        initializePool(poolManager, pools[1], 79228162514264337593543950336);  // ~$3000 ETH
-        initializePool(poolManager, pools[2], 79228162514264337593543950336);  // $1 DAI/USDC
+        initializePool(poolManager, pools[0], 79228162514264337593543950336); // ~$3000 ETH
+        initializePool(poolManager, pools[1], 79228162514264337593543950336); // ~$3000 ETH
+        initializePool(poolManager, pools[2], 79228162514264337593543950336); // $1 DAI/USDC
         initializePool(poolManager, pools[3], 158456325028528675187087900672); // ~$60K BTC
 
         vm.stopBroadcast();
@@ -68,7 +68,8 @@ contract CreateMainnetPools is Script {
 
     function initializePool(PoolManager poolManager, PoolKey memory poolKey, uint160 sqrtPriceX96) internal {
         poolManager.initialize(poolKey, sqrtPriceX96);
-        console2.log("Pool initialized:",
+        console2.log(
+            "Pool initialized:",
             vm.toString(Currency.unwrap(poolKey.currency0)),
             "/",
             vm.toString(Currency.unwrap(poolKey.currency1))

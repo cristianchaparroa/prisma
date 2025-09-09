@@ -27,18 +27,14 @@ contract DeployMinimalV4 is Script {
         console2.log("PoolManager deployed at:", address(poolManager));
 
         // Deploy PositionDescriptor for NFT metadata
-        PositionDescriptor positionDescriptor = new PositionDescriptor(
-            poolManager,
-            weth,
-            bytes32("ETH")
-        );
+        PositionDescriptor positionDescriptor = new PositionDescriptor(poolManager, weth, bytes32("ETH"));
         console2.log("PositionDescriptor deployed at:", address(positionDescriptor));
 
         // Deploy PositionManager with all required parameters
         PositionManager positionManager = new PositionManager(
             poolManager,
             IAllowanceTransfer(permit2),
-            300_000,  // Unsubscribe gas limit
+            300_000, // Unsubscribe gas limit
             positionDescriptor,
             IWETH9(weth)
         );
@@ -53,13 +49,27 @@ contract DeployMinimalV4 is Script {
 
         // Save deployment addresses
         string memory deployments = string.concat(
-            "POOL_MANAGER=", vm.toString(address(poolManager)), "\n",
-            "POSITION_MANAGER=", vm.toString(address(positionManager)), "\n",
-            "POSITION_DESCRIPTOR=", vm.toString(address(positionDescriptor)), "\n",
-            "PERMIT2=", vm.toString(permit2), "\n",
-            "WETH9=", vm.toString(weth), "\n",
-            "DEPLOYER=", vm.toString(deployer), "\n",
-            "CHAIN_ID=", vm.toString(block.chainid), "\n"
+            "POOL_MANAGER=",
+            vm.toString(address(poolManager)),
+            "\n",
+            "POSITION_MANAGER=",
+            vm.toString(address(positionManager)),
+            "\n",
+            "POSITION_DESCRIPTOR=",
+            vm.toString(address(positionDescriptor)),
+            "\n",
+            "PERMIT2=",
+            vm.toString(permit2),
+            "\n",
+            "WETH9=",
+            vm.toString(weth),
+            "\n",
+            "DEPLOYER=",
+            vm.toString(deployer),
+            "\n",
+            "CHAIN_ID=",
+            vm.toString(block.chainid),
+            "\n"
         );
 
         vm.writeFile("deployments/fork-v4.env", deployments);
