@@ -138,13 +138,11 @@ contract YieldMaximizerHook is BaseHook {
         return BaseHook.afterInitialize.selector;
     }
 
-    function _afterSwap(
-        address sender,
-        PoolKey calldata key,
-        SwapParams calldata,
-        BalanceDelta delta,
-        bytes calldata
-    ) internal override returns (bytes4, int128) {
+    function _afterSwap(address sender, PoolKey calldata key, SwapParams calldata, BalanceDelta delta, bytes calldata)
+        internal
+        override
+        returns (bytes4, int128)
+    {
         PoolId poolId = key.toId();
         uint256 totalFeesGenerated = calculateFeesFromSwap(key, delta);
 
