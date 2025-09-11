@@ -8,7 +8,7 @@ import {Currency, CurrencyLibrary} from "v4-core/types/Currency.sol";
 import {PoolKey} from "v4-core/types/PoolKey.sol";
 import {PoolId, PoolIdLibrary} from "v4-core/types/PoolId.sol";
 import {Actions} from "v4-periphery/src/libraries/Actions.sol";
-import {YieldMaximizerHook} from "../../src/YieldMaximizerHook.sol";
+import {YieldMaximizerHook} from "../../../src/YieldMaximizerHook.sol";
 import {IERC20} from "forge-std/interfaces/IERC20.sol";
 import {IPermit2} from "permit2/src/interfaces/IPermit2.sol";
 

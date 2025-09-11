@@ -9,7 +9,7 @@ import {PoolId, PoolIdLibrary} from "v4-core/types/PoolId.sol";
 import {BalanceDelta} from "v4-core/types/BalanceDelta.sol";
 import {SwapParams} from "v4-core/types/PoolOperation.sol";
 import {PoolSwapTest} from "v4-core/test/PoolSwapTest.sol";
-import {YieldMaximizerHook} from "../../src/YieldMaximizerHook.sol";
+import {YieldMaximizerHook} from "../../../src/YieldMaximizerHook.sol";
 import {IERC20} from "forge-std/interfaces/IERC20.sol";
 
 /**

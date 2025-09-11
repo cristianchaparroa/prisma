@@ -1,16 +1,60 @@
 #!/bin/bash
-# Master Fork Setup - Complete Mainnet Environment in One Command
+# 🚀 UNIFIED UNISWAP V4 YIELD MAXIMIZER SIMULATION
+# Complete end-to-end pipeline: Infrastructure + Trading + Analysis
+# Usage: ./run-unified-simulation.sh <MAINNET_RPC_URL>
 
 set -e
 
-echo "🚀 Setting up Complete Mainnet Fork Environment..."
+# Color codes for better output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+PURPLE='\033[0;35m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Color
+
+# Function to print colored headers
+print_header() {
+    echo -e "\n${BLUE}======================================${NC}"
+    echo -e "${BLUE}$1${NC}"
+    echo -e "${BLUE}======================================${NC}\n"
+}
+
+print_step() {
+    echo -e "${PURPLE}📍 $1${NC}"
+}
+
+print_success() {
+    echo -e "${GREEN}✅ $1${NC}"
+}
+
+print_warning() {
+    echo -e "${YELLOW}⚠️  $1${NC}"
+}
+
+print_error() {
+    echo -e "${RED}❌ $1${NC}"
+}
+
+# Function to cleanup on exit
+cleanup() {
+    if [ ! -z "$ANVIL_PID" ] && kill -0 $ANVIL_PID 2>/dev/null; then
+        print_warning "Cleaning up Anvil process (PID: $ANVIL_PID)..."
+        kill $ANVIL_PID 2>/dev/null || true
+    fi
+}
+
+# trap cleanup EXIT
+
+print_header "🚀 UNIFIED UNISWAP V4 YIELD MAXIMIZER SIMULATION"
 
 # Validate RPC URL
 if [ -z "$1" ]; then
-    echo "Usage: ./run-complete-fork.sh <MAINNET_RPC_URL>"
-    echo "Example: ./run-complete-fork.sh https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY"
+    echo -e "${YELLOW}Usage: ./run-unified-simulation.sh <MAINNET_RPC_URL>${NC}"
+    echo -e "${YELLOW}Example: ./run-unified-simulation.sh https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY${NC}"
     echo ""
-    echo "Get free RPC from:"
+    echo -e "${CYAN}Get free RPC from:${NC}"
     echo "- Alchemy: https://alchemy.com"
     echo "- Infura: https://infura.io"
     echo "- Public: https://ethereum.publicnode.com"
@@ -18,18 +62,18 @@ if [ -z "$1" ]; then
 fi
 
 RPC_URL=$1
+START_TIME=$(date +%s)
 
-# Step 1: Setup Anvil Fork
-echo "📍 Step 1: Setting up Anvil fork..."
+print_header "PHASE 1: INFRASTRUCTURE SETUP"
+
+print_step "Step 1.1: Setting up Anvil mainnet fork..."
 
 # Clean any existing environment
-echo "🧹 Cleaning existing environment..."
+print_step "Cleaning existing environment..."
 pkill -f anvil 2>/dev/null || true
 sleep 3
 
-echo "🚀 Starting fresh Anvil fork..."
-
-# Start anvil with optimized fork settings
+print_step "Starting fresh Anvil fork..."
 anvil --fork-url $RPC_URL \
       --port 8545 \
       --host 0.0.0.0 \
@@ -42,24 +86,24 @@ anvil --fork-url $RPC_URL \
 ANVIL_PID=$!
 echo "Anvil started (PID: $ANVIL_PID)"
 
-# Wait for full initialization
-echo "⏳ Waiting for Anvil fork to sync..."
+# Wait for initialization
+print_step "Waiting for Anvil fork to sync..."
 sleep 8
 
-# Verify connection and fork block
-echo "🔍 Verifying fork connection..."
+# Verify connection
+print_step "Verifying fork connection..."
 if ! cast block-number --rpc-url http://localhost:8545 >/dev/null 2>&1; then
-    echo "❌ Anvil failed to start properly"
+    print_error "Anvil failed to start properly"
     kill $ANVIL_PID 2>/dev/null || true
     exit 1
 fi
 
 LATEST_BLOCK=$(cast block-number --rpc-url http://localhost:8545)
-echo "✅ Fork active at block: $LATEST_BLOCK"
+print_success "Fork active at block: $LATEST_BLOCK"
 
-# Step 2: Create Static Environment Configuration
-echo "📍 Step 2: Creating static environment configuration..."
+print_step "Step 1.2: Creating static environment configuration..."
 
+# Create unified environment file
 cat > .env << EOF
 # Mainnet Fork Environment (Static Configuration)
 ANVIL_RPC_URL=http://localhost:8545
@@ -112,41 +156,31 @@ ACCOUNT_8_PRIVATE_KEY=0xdbda1821b80551c9d65939329250298aa3472ba22feea921c0cf5d62
 ACCOUNT_9_ADDRESS=0xa0Ee7A142d267C1f36714E4a8F75612F20a79720
 ACCOUNT_9_PRIVATE_KEY=0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6
 
-# Dynamic Deployment Addresses (Will be set by deployment scripts)
-# POOL_MANAGER=
-# POSITION_MANAGER=
-# HOOK_ADDRESS=
-
 # Process Info
 ANVIL_PID=$ANVIL_PID
 MAINNET_RPC_URL=$RPC_URL
 EOF
 
-echo "✅ Static environment created with verified mainnet addresses"
+print_success "Static environment created with verified mainnet addresses"
 
 # Test real mainnet contracts
-echo "🧪 Testing real mainnet contracts..."
-echo "USDC Symbol: $(cast call $TOKEN_USDC "symbol()" --rpc-url http://localhost:8545)"
-echo "WETH Symbol: $(cast call $TOKEN_WETH "symbol()" --rpc-url http://localhost:8545)"
-echo "DAI Symbol: $(cast call $TOKEN_DAI "symbol()" --rpc-url http://localhost:8545)"
+print_step "Testing real mainnet contracts..."
+echo "USDC Symbol: $(cast call 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 "symbol()" --rpc-url http://localhost:8545)"
+echo "WETH Symbol: $(cast call 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2 "symbol()" --rpc-url http://localhost:8545)"
+echo "DAI Symbol: $(cast call 0x6B175474E89094C44Da98b954EedeAC495271d0F "symbol()" --rpc-url http://localhost:8545)"
 
 # Source the environment for subsequent steps
 source .env
 
-# Wait for full fork sync
-echo "⏳ Waiting for fork to fully sync..."
-sleep 5
-
-# Step 3: Deploy V4 Infrastructure
-echo "📍 Step 3: Deploying minimal V4 infrastructure..."
-forge script script/fork/01_DeployMinimalV4.s.sol \
+print_step "Step 1.3: Deploying V4 infrastructure..."
+forge script script/local/fork/01_DeployMinimalV4.s.sol \
     --rpc-url $ANVIL_RPC_URL \
     --private-key $ANVIL_PRIVATE_KEY \
     --broadcast \
     --skip-simulation
 
 if [ $? -ne 0 ]; then
-    echo "❌ V4 infrastructure deployment failed!"
+    print_error "V4 infrastructure deployment failed!"
     exit 1
 fi
 
@@ -157,16 +191,15 @@ if [ -f "deployments/fork-v4.env" ]; then
     source deployments/fork-v4.env
 fi
 
-# Step 4: Deploy YieldMaximizerHook
-echo "📍 Step 4: Deploying YieldMaximizerHook..."
-forge script script/fork/03_DeployYieldHook.s.sol \
+print_step "Step 1.4: Deploying YieldMaximizerHook..."
+forge script script/local/fork/03_DeployYieldHook.s.sol \
     --rpc-url $ANVIL_RPC_URL \
     --private-key $ANVIL_PRIVATE_KEY \
     --broadcast \
     --skip-simulation
 
 if [ $? -ne 0 ]; then
-    echo "❌ YieldMaximizerHook deployment failed!"
+    print_error "YieldMaximizerHook deployment failed!"
     exit 1
 fi
 
@@ -177,52 +210,18 @@ if [ -f "deployments/fork-hook.env" ]; then
     source deployments/fork-hook.env
 fi
 
-# Step 5: Fund Test Accounts
-echo "📍 Step 5: Funding test accounts with real tokens..."
-forge script script/fork/02_FundAccounts.s.sol \
+print_step "Step 1.5: Creating pools with real tokens..."
+forge script script/local/fork/04_CreateMainnetPools.s.sol \
     --rpc-url $ANVIL_RPC_URL \
     --private-key $ANVIL_PRIVATE_KEY \
     --broadcast \
     --skip-simulation
 
 if [ $? -ne 0 ]; then
-    echo "❌ Account funding failed!"
+    print_error "Pool creation failed!"
     exit 1
 fi
 
-# Step 6: Create Pools
-echo "📍 Step 6: Creating pools with real tokens..."
-forge script script/fork/04_CreateMainnetPools.s.sol \
-    --rpc-url $ANVIL_RPC_URL \
-    --private-key $ANVIL_PRIVATE_KEY \
-    --broadcast \
-    --skip-simulation
+print_success "Infrastructure deployed successfully"
 
-if [ $? -ne 0 ]; then
-    echo "❌ Pool creation failed!"
-    exit 1
-fi
 
-echo ""
-echo "🎉 COMPLETE MAINNET FORK ENVIRONMENT READY!"
-echo "============================================="
-echo ""
-echo "✅ Real Permit2 contract active"
-echo "✅ Real USDC, WETH, DAI, WBTC tokens"
-echo "✅ YieldMaximizerHook deployed and active"
-echo "✅ 4 main trading pools created"
-echo "✅ 5 test accounts funded with real tokens"
-echo ""
-echo "📁 Environment saved to: .env"
-echo "🔧 Anvil Process ID: $ANVIL_PID"
-echo ""
-echo "🎯 Next Steps:"
-echo "1. Run simulations: ./scripts/local/simulation.sh"
-echo "2. Test trading: ./scripts/local/simple-swap.sh"
-echo "3. Monitor yields: Check your hook performance!"
-echo ""
-echo "💡 Environment Benefits:"
-echo "- No Permit2 issues (using real mainnet contract)"
-echo "- No settlement problems (real token implementations)"
-echo "- Realistic market conditions (mainnet liquidity)"
-echo "- Battle-tested infrastructure"
