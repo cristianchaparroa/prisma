@@ -17,3 +17,5 @@ docs/
 anvil_output.log
 deployments
 accounts.json
+trading_simulation.log
+user_simulation.log
