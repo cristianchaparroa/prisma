@@ -283,7 +283,6 @@ contract SimulateUsers is Script {
     function _applyMin(uint256 amt, address token) internal view returns (uint256) {
         // reasonable minimums
         uint256 minNormal = 100; // 100 units (in token native decimals)
-        uint256 minWhale = 1000; // 1000 units (in token native decimals)
         // use minNormal as baseline to avoid tiny amounts
         if (token == address(usdc)) {
             uint256 m = minNormal * 1e6;
@@ -332,8 +331,8 @@ contract SimulateUsers is Script {
         }
 
         // Align to spacing
-        tickLower = (tickLower / spacing) * spacing;
-        tickUpper = (tickUpper / spacing) * spacing;
+        tickLower = spacing * (tickLower / spacing);
+        tickUpper = spacing * (tickUpper / spacing);
 
         require(tickLower < tickUpper, "Invalid tick range");
         require(tickLower >= -887272 && tickUpper <= 887272, "Tick out of bounds");
@@ -349,8 +348,6 @@ contract SimulateUsers is Script {
     ) internal {
         // PositionManager.modifyLiquidities: pack actions + params
         bytes memory actions = abi.encodePacked(uint8(Actions.MINT_POSITION), uint8(Actions.SETTLE_PAIR));
-
-        bytes;
 
         // MINT_POSITION params
         bytes[] memory params = new bytes[](2);

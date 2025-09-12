@@ -65,7 +65,7 @@ contract GenerateTrading is Script {
     // Trading statistics
     struct TradingStats {
         uint256 totalTrades;
-        uint256 totalVolumeETH;
+        uint256 totalVolumeEth;
         uint256 totalFeesGenerated;
         uint256 tradesPerPool;
         mapping(PoolId => uint256) poolVolume;
@@ -99,7 +99,7 @@ contract GenerateTrading is Script {
         console.log("\n TRADING ACTIVITY GENERATION COMPLETE!");
         console.log("Trading Statistics:");
         console.log(string.concat("  Total Trades Executed: ", vm.toString(stats.totalTrades)));
-        console.log(string.concat("  Estimated Fees Generated: $", vm.toString(_estimateTotalFeesUSD())));
+        console.log(string.concat("  Estimated Fees Generated: $", vm.toString(_estimateTotalFeesUsd())));
         console.log("Ready for auto-compound monitoring");
 
         // Save trading statistics
@@ -646,7 +646,7 @@ contract GenerateTrading is Script {
         }
     }
 
-    function _estimateTotalFeesUSD() internal view returns (uint256) {
+    function _estimateTotalFeesUsd() internal view returns (uint256) {
         // Rough estimate of total fees in USD equivalent
         // This is a simplified calculation for display purposes
         return stats.totalFeesGenerated / 10 ** 15; // Convert to rough USD estimate
