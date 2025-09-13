@@ -75,10 +75,10 @@ contract GenerateTrading is Script {
 
     TradingStats public stats;
 
-    // Constants for realistic trading
-    uint256 public constant TOTAL_TRADES = 75; // Increased for more activity
-    uint256 public constant MIN_TRADE_SIZE = 50; // $50 equivalent
-    uint256 public constant MAX_TRADE_SIZE = 15000; // $15,000 equivalent
+    // Constants for realistic trading - INCREASED VALUES
+    uint256 public constant TOTAL_TRADES = 200; // Increased from 75 to 200
+    uint256 public constant MIN_TRADE_SIZE = 500; // Increased from 50 to 500 ($500 equivalent)
+    uint256 public constant MAX_TRADE_SIZE = 50000; // Increased from 15000 to 50000 ($50,000 equivalent)
     uint256 public constant SLIPPAGE_TOLERANCE = 300; // 3% slippage tolerance
 
     function run() external {
