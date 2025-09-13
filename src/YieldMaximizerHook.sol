@@ -2,9 +2,6 @@
 pragma solidity 0.8.26;
 
 import {BaseHook} from "v4-periphery/src/utils/BaseHook.sol";
-import {ERC1155} from "solmate/src/tokens/ERC1155.sol";
-
-import {Currency} from "v4-core/types/Currency.sol";
 import {PoolKey} from "v4-core/types/PoolKey.sol";
 import {PoolId, PoolIdLibrary} from "v4-core/types/PoolId.sol";
 import {BalanceDelta} from "v4-core/types/BalanceDelta.sol";
@@ -28,7 +25,7 @@ contract YieldMaximizerHook is BaseHook {
 
     struct PoolStrategy {
         uint256 totalUsers;
-        uint256 totalTVL;
+        uint256 totalTvl;
         uint256 lastCompoundTime;
         bool isActive;
     }
@@ -198,7 +195,7 @@ contract YieldMaximizerHook is BaseHook {
     function _afterAddLiquidity(
         address sender,
         PoolKey calldata key,
-        ModifyLiquidityParams calldata modifyParams,
+        ModifyLiquidityParams calldata, /* modifyParams */
         BalanceDelta delta,
         BalanceDelta, /* feesAccrued */
         bytes calldata hookData
@@ -233,7 +230,7 @@ contract YieldMaximizerHook is BaseHook {
 
             // Update pool strategy
             if (userStrategies[actualUser].isActive) {
-                poolStrategies[poolId].totalTVL += liquidityAdded;
+                poolStrategies[poolId].totalTvl += liquidityAdded;
             }
         }
 
@@ -289,10 +286,10 @@ contract YieldMaximizerHook is BaseHook {
 
             // Update pool strategy
             if (userStrategies[actualUser].isActive) {
-                if (poolStrategies[poolId].totalTVL >= liquidityRemoved) {
-                    poolStrategies[poolId].totalTVL -= liquidityRemoved;
+                if (poolStrategies[poolId].totalTvl >= liquidityRemoved) {
+                    poolStrategies[poolId].totalTvl -= liquidityRemoved;
                 } else {
-                    poolStrategies[poolId].totalTVL = 0;
+                    poolStrategies[poolId].totalTvl = 0;
                 }
             }
         }

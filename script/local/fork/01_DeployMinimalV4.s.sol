@@ -22,9 +22,10 @@ contract DeployMinimalV4 is Script {
         console2.log("Using real Permit2:", permit2);
         console2.log("Using real WETH:", weth);
 
-        // Deploy PoolManager with controller (deployer address)
-        PoolManager poolManager = new PoolManager(deployer);
-        console2.log("PoolManager deployed at:", address(poolManager));
+        // Use official Uniswap V4 mainnet PoolManager (for mainnet fork)
+        address poolManagerAddress = 0x000000000004444c5dc75cB358380D2e3dE08A90;
+        PoolManager poolManager = PoolManager(poolManagerAddress);
+        console2.log("Using official PoolManager at:", address(poolManager));
 
         // Deploy PositionDescriptor for NFT metadata
         PositionDescriptor positionDescriptor = new PositionDescriptor(poolManager, weth, bytes32("ETH"));

@@ -6,7 +6,6 @@ import {PoolManager} from "v4-core/PoolManager.sol";
 import {PoolKey} from "v4-core/types/PoolKey.sol";
 import {Currency} from "v4-core/types/Currency.sol";
 import {IHooks} from "v4-core/interfaces/IHooks.sol";
-import {TickMath} from "v4-core/libraries/TickMath.sol";
 
 contract CreateMainnetPools is Script {
     function run() external {

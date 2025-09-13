@@ -7,15 +7,10 @@ import {console} from "forge-std/console.sol";
 import {Deployers} from "@uniswap/v4-core/test/utils/Deployers.sol";
 import {PoolSwapTest} from "v4-core/test/PoolSwapTest.sol";
 import {MockERC20} from "solmate/src/test/utils/mocks/MockERC20.sol";
-
-import {PoolManager} from "v4-core/PoolManager.sol";
 import {SwapParams, ModifyLiquidityParams} from "v4-core/types/PoolOperation.sol";
-import {IPoolManager} from "v4-core/interfaces/IPoolManager.sol";
-
 import {Currency, CurrencyLibrary} from "v4-core/types/Currency.sol";
 import {PoolKey} from "v4-core/types/PoolKey.sol";
 import {PoolId, PoolIdLibrary} from "v4-core/types/PoolId.sol";
-
 import {Hooks} from "v4-core/libraries/Hooks.sol";
 import {TickMath} from "v4-core/libraries/TickMath.sol";
 import {LiquidityAmounts} from "@uniswap/v4-core/test/utils/LiquidityAmounts.sol";
@@ -95,7 +90,6 @@ contract SwapHookIntegrationTest is Test, Deployers {
     }
 
     function _addInitialLiquidity() internal {
-        uint160 sqrtPriceAtTickLower = TickMath.getSqrtPriceAtTick(-60);
         uint160 sqrtPriceAtTickUpper = TickMath.getSqrtPriceAtTick(60);
 
         uint256 ethToAdd = 1 ether;
@@ -121,7 +115,6 @@ contract SwapHookIntegrationTest is Test, Deployers {
         hook.activateStrategy(poolId, 50 gwei, 5);
 
         uint256 ethToAdd = 0.1 ether;
-        uint160 sqrtPriceAtTickLower = TickMath.getSqrtPriceAtTick(-60);
         uint160 sqrtPriceAtTickUpper = TickMath.getSqrtPriceAtTick(60);
 
         uint128 liquidityDelta = LiquidityAmounts.getLiquidityForAmount0(SQRT_PRICE_1_1, sqrtPriceAtTickUpper, ethToAdd);
@@ -203,7 +196,6 @@ contract SwapHookIntegrationTest is Test, Deployers {
         hook.activateStrategy(poolId, 50 gwei, 5);
 
         uint256 aliceEthToAdd = 0.2 ether;
-        uint160 sqrtPriceAtTickLower = TickMath.getSqrtPriceAtTick(-60);
         uint160 sqrtPriceAtTickUpper = TickMath.getSqrtPriceAtTick(60);
 
         uint128 aliceLiquidityDelta =
@@ -347,7 +339,6 @@ contract SwapHookIntegrationTest is Test, Deployers {
         hook.activateStrategy(poolId, 50 gwei, 5);
 
         uint256 aliceEthToAdd = 0.3 ether;
-        uint160 sqrtPriceAtTickLower = TickMath.getSqrtPriceAtTick(-60);
         uint160 sqrtPriceAtTickUpper = TickMath.getSqrtPriceAtTick(60);
 
         uint128 aliceLiquidityDelta =
@@ -502,7 +493,6 @@ contract SwapHookIntegrationTest is Test, Deployers {
         hook.activateStrategy(poolId, 100 gwei, 5); // High gas threshold so compounds aren't prevented by gas
 
         uint256 aliceEthToAdd = 0.1 ether;
-        uint160 sqrtPriceAtTickLower = TickMath.getSqrtPriceAtTick(-60);
         uint160 sqrtPriceAtTickUpper = TickMath.getSqrtPriceAtTick(60);
 
         uint128 aliceLiquidityDelta =
@@ -732,7 +722,7 @@ contract SwapHookIntegrationTest is Test, Deployers {
 
                 // For larger swaps, expect higher absolute fees
                 if (i > 0) {
-                    YieldMaximizerHook.FeeAccounting memory previousFees = hook.getUserFees(alice, poolId);
+                    // YieldMaximizerHook.FeeAccounting memory previousFees = hook.getUserFees(alice, poolId);
                     // Note: Due to price impact, larger swaps may not always yield proportionally higher fees
                     // So we just check that we're earning reasonable amounts
                     assertGt(actualFeeIncrease, 0, "Each swap should generate fees");

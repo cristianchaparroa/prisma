@@ -6,15 +6,12 @@ import {console} from "forge-std/console.sol";
 import {YieldMaximizerHook} from "../src/YieldMaximizerHook.sol";
 import {SimpleDeployers} from "./utils/SimpleDeployers.sol";
 import {TestConstants} from "./utils/TestConstants.sol";
-import {IPoolManager} from "v4-core/interfaces/IPoolManager.sol";
 import {PoolKey} from "v4-core/types/PoolKey.sol";
 import {PoolId, PoolIdLibrary} from "v4-core/types/PoolId.sol";
 import {Currency, CurrencyLibrary} from "v4-core/types/Currency.sol";
 import {IHooks} from "v4-core/interfaces/IHooks.sol";
 import {Hooks} from "v4-core/libraries/Hooks.sol";
 import {BalanceDelta, toBalanceDelta} from "v4-core/types/BalanceDelta.sol";
-import {SwapParams} from "v4-core/types/PoolOperation.sol";
-import {MockERC20} from "solmate/src/test/utils/mocks/MockERC20.sol";
 
 /**
  * @title Comprehensive Fee Collection Tests
