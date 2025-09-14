@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import EventCollector from './providers/collectors/EventCollector'
 import './App.css'
+import AnvilSwapComponent from "./components/swap.tsx";
 
 function App() {
 
@@ -51,11 +52,11 @@ function App() {
   }, [])
 
   return (
-    <div>
-      <h1>YieldMaximizer EventCollector Test</h1>
-      <p>Check the browser console for event logs!</p>
-      <p>Make sure your local Anvil is running on port 8545</p>
-      <p>Hook address is loaded dynamically from /config.json</p>
+    <div className="min-h-screen bg-gray-900 text-white">
+      <div className="container mx-auto py-8">
+        <h1 className="text-2xl font-bold text-center mb-8 text-gray-100">YieldMaximizer EventCollector Test</h1>
+        <AnvilSwapComponent />
+      </div>
     </div>
   )
 }
