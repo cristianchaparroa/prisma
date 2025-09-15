@@ -216,13 +216,42 @@ forge script script/local/fork/04_CreateMainnetPools.s.sol \
     --rpc-url $ANVIL_RPC_URL \
     --private-key $ANVIL_PRIVATE_KEY \
     --broadcast \
-    --skip-simulation
+    -vvv --gas-estimate-multiplier 200
 
 if [ $? -ne 0 ]; then
     print_error "Pool creation failed!"
     exit 1
 fi
 
+print_step "Step 1.6: Add Funds ..."
+./scripts/local/05_fund-accounts-manual.sh
+
+if [ $? -ne 0 ]; then
+    print_error "Funds injection failed!"
+    exit 1
+fi
+
+print_step "Step 1.6: Add liquidity..."
+forge script script/local/fork/06_LiquidityProvision.s.sol --tc LiquidityProvision \
+    --rpc-url $ANVIL_RPC_URL \
+    --private-key $ANVIL_PRIVATE_KEY \
+    --broadcast \
+    --skip-simulation \
+    -vvv --gas-estimate-multiplier 200
+
+if [ $? -ne 0 ]; then
+    print_error "Liquidity injection failed!"
+    exit 1
+fi
+
+./scripts/local/05_fund-accounts-manual.sh
+
 print_success "Infrastructure deployed successfully"
 
 
+echo "#### --> Validations... <--- #####"
+./scripts/validations/01_validate-hook.sh
+./scripts/validations/02_validate-pool.sh
+./scripts/validations/03_validate_funds.sh
+./scripts/validations/03_validate_token_funds.sh
+./scripts/local/06_add-pool-liquidity.sh

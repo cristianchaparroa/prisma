@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
-import EventCollector from './providers/collectors/EventCollector'
 import './App.css'
-import AnvilSwapComponent from "./components/swap.tsx";
+import HookEventListener from "./providers/collectors/EventCollector";
 
 function App() {
 
@@ -11,36 +10,15 @@ function App() {
       console.log('🧪 Starting EventCollector Test...')
 
       try {
-        // Fetch current hook address from config file
-        console.log('📡 Fetching current hook address...')
-        const configResponse = await fetch('/config.json')
-        const config = await configResponse.json()
+        const listener = new HookEventListener({
+          rpcUrl: 'http://127.0.0.1:8545',
+          hookAddress: '0x50D1b723B364dD8f41B5b394DE9a8870Bb49D540'
+        });
 
-        console.log('✅ Loaded config:', config)
+        // Start listening
+        await listener.startListening();
 
-        // Create EventCollector instance with dynamic config
-        const eventCollector = new EventCollector(config)
 
-        // Register a simple event handler for testing
-        eventCollector.onEvent('BatchExecuted', (event) => {
-          console.log('✅ BatchExecuted event received:', event)
-        })
-
-        // Register handler for FeesCollected
-        eventCollector.onEvent('FeesCollected', (event) => {
-          console.log('💰 FeesCollected event received:', event)
-        })
-
-        // Register handler for all events
-        eventCollector.onEvent('*', (event) => {
-          console.log('📡 Any event received:', event.type, event.data)
-        })
-
-        // Start monitoring
-        await eventCollector.startEventMonitoring()
-
-        console.log('🎯 EventCollector test setup complete - waiting for events...')
-        console.log('💡 Run your simulation to generate events!')
 
       } catch (error) {
         console.error('❌ EventCollector test failed:', error)
@@ -55,7 +33,6 @@ function App() {
     <div className="min-h-screen bg-gray-900 text-white">
       <div className="container mx-auto py-8">
         <h1 className="text-2xl font-bold text-center mb-8 text-gray-100">YieldMaximizer EventCollector Test</h1>
-        <AnvilSwapComponent />
       </div>
     </div>
   )

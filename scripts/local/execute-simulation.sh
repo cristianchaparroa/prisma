@@ -63,47 +63,15 @@ fi
 LATEST_BLOCK=$(cast block-number --rpc-url http://localhost:8545)
 print_success "Infrastructure verified at block: $LATEST_BLOCK"
 
-print_header "PHASE 2: WHALE VERIFICATION & ACCOUNT FUNDING"
-
-print_step "Step 2.1: Verifying whale balances..."
-./scripts/local/01_whale.sh
-
-if [ $? -ne 0 ]; then
-    print_error "Whale verification failed!"
-    exit 1
-fi
-
-print_step "Step 2.2: Funding test accounts with real tokens..."
-
-./scripts/local/02_fund-accounts-manual.sh
-
-if [ $? -ne 0 ]; then
-  print_error "Both funding methods failed!"
-  exit 1
-fi
-
-print_success "All test accounts funded successfully"
-
-print_header "PHASE 3: POOL LIQUIDITY PROVISION"
-
-print_step "Step 3.1: Adding liquidity to pools..."
-./scripts/local/03_add-pool-liquidity.sh
-
-if [ $? -ne 0 ]; then
-    print_error "Pool liquidity addition failed!"
-    exit 1
-fi
-
-print_success "Pool liquidity added successfully"
-
 print_header "PHASE 4: SIMULATION EXECUTION"
 
 print_step "Step 4.1: Running user simulation..."
-forge script script/local/simulation/07_SimulateUsers.s.sol \
-    --rpc-url http://localhost:8545 \
-    --private-key $ANVIL_PRIVATE_KEY \
-    --broadcast \
-    --skip-simulation > user_simulation.log 2>&1
+#forge script script/local/simulation/08_SimulateUsers.s.sol \
+#    --rpc-url http://localhost:8545 \
+#    --private-key $ANVIL_PRIVATE_KEY \
+#    --broadcast \
+#    --skip-simulation > user_simulation.log 2>&1
+./scripts/local/08-simulate-users.sh
 
 if [ $? -eq 0 ]; then
     print_success "User simulation completed"
@@ -112,7 +80,7 @@ else
 fi
 
 print_step "Step 4.2: Running trading simulation..."
-forge script script/local/simulation/08_GenerateTrading.s.sol \
+forge script script/local/simulation/09_GenerateTrading.s.sol \
     --rpc-url http://localhost:8545 \
     --private-key $ANVIL_PRIVATE_KEY \
     --broadcast \

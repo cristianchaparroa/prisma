@@ -14,7 +14,7 @@ if ! curl -s http://localhost:8545 > /dev/null; then
     exit 1
 fi
 
-echo "💰 Funding test accounts with real mainnet tokens..."
+echo "💰 Funding test accounts with real mainnet tokens and ETH..."
 
 # Function to impersonate and fund account
 fund_account() {
@@ -23,17 +23,17 @@ fund_account() {
     local usdc_amount=$3
     local dai_amount=$4
     local wbtc_amount=$5
-    local account_name=$6
+    local eth_amount=$6
+    local account_name=$7
 
     echo ""
     echo "📍 Funding $account_name: $account"
-    
+
     # Impersonate whale accounts and give them ETH for gas
     curl -s -X POST --data "{\"jsonrpc\":\"2.0\",\"method\":\"anvil_impersonateAccount\",\"params\":[\"$WETH_WHALE\"],\"id\":1}" -H "Content-Type: application/json" http://localhost:8545 > /dev/null
     curl -s -X POST --data "{\"jsonrpc\":\"2.0\",\"method\":\"anvil_impersonateAccount\",\"params\":[\"$USDC_WHALE\"],\"id\":1}" -H "Content-Type: application/json" http://localhost:8545 > /dev/null
     curl -s -X POST --data "{\"jsonrpc\":\"2.0\",\"method\":\"anvil_impersonateAccount\",\"params\":[\"$DAI_WHALE\"],\"id\":1}" -H "Content-Type: application/json" http://localhost:8545 > /dev/null
     curl -s -X POST --data "{\"jsonrpc\":\"2.0\",\"method\":\"anvil_impersonateAccount\",\"params\":[\"$WBTC_WHALE\"],\"id\":1}" -H "Content-Type: application/json" http://localhost:8545 > /dev/null
-    
     # Give whales ETH for gas
     curl -s -X POST --data "{\"jsonrpc\":\"2.0\",\"method\":\"anvil_setBalance\",\"params\":[\"$WETH_WHALE\",\"0x21E19E0C9BAB2400000\"],\"id\":1}" -H "Content-Type: application/json" http://localhost:8545 > /dev/null
     curl -s -X POST --data "{\"jsonrpc\":\"2.0\",\"method\":\"anvil_setBalance\",\"params\":[\"$USDC_WHALE\",\"0x21E19E0C9BAB2400000\"],\"id\":1}" -H "Content-Type: application/json" http://localhost:8545 > /dev/null
@@ -52,39 +52,55 @@ fund_account() {
 
     echo "  • WBTC: $(echo "scale=4; $wbtc_amount / 10^8" | bc -l)"
     cast send $TOKEN_WBTC "transfer(address,uint256)" $account $wbtc_amount --from $WBTC_WHALE --unlocked --rpc-url $ANVIL_RPC_URL > /dev/null
-    
+
+    # Fund account with ETH
+    echo "  • ETH: $(echo "scale=2; $eth_amount / 10^18" | bc -l)"
+    curl -s -X POST --data "{\"jsonrpc\":\"2.0\",\"method\":\"anvil_setBalance\",\"params\":[\"$account\",\"$eth_amount\"],\"id\":1}" -H "Content-Type: application/json" http://localhost:8545 > /dev/null
+
     echo "  ✅ $account_name funded successfully"
 }
 
 # Fund small users (accounts 1-6) - Using string literals for large numbers
 WETH_SMALL="20000000000000000000"     # 20 WETH
-USDC_SMALL="50000000000"              # 50,000 USDC  
+USDC_SMALL="50000000000"              # 50,000 USDC
 DAI_SMALL="50000000000000000000000"   # 50,000 DAI
 WBTC_SMALL="100000000"                # 1 WBTC
+ETH_SMALL="100000000000000000000"       # 100 ETH
 
-fund_account $ACCOUNT_1_ADDRESS $WETH_SMALL $USDC_SMALL $DAI_SMALL $WBTC_SMALL "Account_1"
-fund_account $ACCOUNT_2_ADDRESS $WETH_SMALL $USDC_SMALL $DAI_SMALL $WBTC_SMALL "Account_2"
-fund_account $ACCOUNT_3_ADDRESS $WETH_SMALL $USDC_SMALL $DAI_SMALL $WBTC_SMALL "Account_3"
-fund_account $ACCOUNT_4_ADDRESS $WETH_SMALL $USDC_SMALL $DAI_SMALL $WBTC_SMALL "Account_4"
-fund_account $ACCOUNT_5_ADDRESS $WETH_SMALL $USDC_SMALL $DAI_SMALL $WBTC_SMALL "Account_5"
-fund_account $ACCOUNT_6_ADDRESS $WETH_SMALL $USDC_SMALL $DAI_SMALL $WBTC_SMALL "Account_6"
+fund_account $ACCOUNT_1_ADDRESS $WETH_SMALL $USDC_SMALL $DAI_SMALL $WBTC_SMALL $ETH_SMALL "Account_1"
+fund_account $ACCOUNT_2_ADDRESS $WETH_SMALL $USDC_SMALL $DAI_SMALL $WBTC_SMALL $ETH_SMALL "Account_2"
+fund_account $ACCOUNT_3_ADDRESS $WETH_SMALL $USDC_SMALL $DAI_SMALL $WBTC_SMALL $ETH_SMALL "Account_3"
+fund_account $ACCOUNT_4_ADDRESS $WETH_SMALL $USDC_SMALL $DAI_SMALL $WBTC_SMALL $ETH_SMALL "Account_4"
+fund_account $ACCOUNT_5_ADDRESS $WETH_SMALL $USDC_SMALL $DAI_SMALL $WBTC_SMALL $ETH_SMALL "Account_5"
+fund_account $ACCOUNT_6_ADDRESS $WETH_SMALL $USDC_SMALL $DAI_SMALL $WBTC_SMALL $ETH_SMALL "Account_6"
 
 # Fund medium users (accounts 7-8)
 WETH_MEDIUM="100000000000000000000"     # 100 WETH
 USDC_MEDIUM="250000000000"              # 250,000 USDC
-DAI_MEDIUM="250000000000000000000000"   # 250,000 DAI  
+DAI_MEDIUM="250000000000000000000000"   # 250,000 DAI
 WBTC_MEDIUM="500000000"                 # 5 WBTC
+ETH_SMALL="100000000000000000000"       # 100 ETH
 
-fund_account $ACCOUNT_7_ADDRESS $WETH_MEDIUM $USDC_MEDIUM $DAI_MEDIUM $WBTC_MEDIUM "Account_7"
-fund_account $ACCOUNT_8_ADDRESS $WETH_MEDIUM $USDC_MEDIUM $DAI_MEDIUM $WBTC_MEDIUM "Account_8"
+fund_account $ACCOUNT_7_ADDRESS $WETH_MEDIUM $USDC_MEDIUM $DAI_MEDIUM $WBTC_MEDIUM $ETH_MEDIUM "Account_7"
+fund_account $ACCOUNT_8_ADDRESS $WETH_MEDIUM $USDC_MEDIUM $DAI_MEDIUM $WBTC_MEDIUM $ETH_MEDIUM "Account_8"
 
-# Fund large user (account 9)  
+# Fund large user (account 9)
 WETH_LARGE="500000000000000000000"      # 500 WETH
 USDC_LARGE="1000000000000"              # 1,000,000 USDC
 DAI_LARGE="1000000000000000000000000"   # 1,000,000 DAI
 WBTC_LARGE="2000000000"                 # 20 WBTC
+ETH_SMALL="100000000000000000000"       # 100 ETH
 
-fund_account $ACCOUNT_9_ADDRESS $WETH_LARGE $USDC_LARGE $DAI_LARGE $WBTC_LARGE "Account_9"
+fund_account $ACCOUNT_9_ADDRESS $WETH_LARGE $USDC_LARGE $DAI_LARGE $WBTC_LARGE $ETH_LARGE "Account_9"
+
+# Fund the main deployer account (ANVIL_ADDRESS) for liquidity provision
+WETH_DEPLOYER="1000000000000000000000"    # 1,000 WETH
+USDC_DEPLOYER="3000000000000"             # 3,000,000 USDC
+DAI_DEPLOYER="3000000000000000000000000"  # 3,000,000 DAI
+WBTC_DEPLOYER="10000000000"               # 100 WBTC
+ETH_DEPLOYER="500000000000000000000"      # 500 ETH
+
+fund_account $ANVIL_ADDRESS $WETH_DEPLOYER $USDC_DEPLOYER $DAI_DEPLOYER $WBTC_DEPLOYER $ETH_DEPLOYER "Main_Deployer"
 
 echo ""
 echo "🎉 ALL ACCOUNTS FUNDED SUCCESSFULLY!"

@@ -1,305 +1,215 @@
 import { createPublicClient, http, keccak256, toHex } from 'viem';
 import { anvil } from 'viem/chains';
-import YieldMaximizerABI from '../../generated/YieldMaximizerHook.abi.json';
 
-const events = [
-    'HookSwap',              // ⭐ MOST IMPORTANT - Standard V4 hook event
-    'StrategyActivated',
-    'StrategyDeactivated', 
-    'StrategyUpdated',
-    'FeesCollected',
-    'FeesCompounded',
-    'BatchScheduled',
-    'BatchExecuted',
-    'EmergencyCompound',
-    'UserAddedToPool',
-    'UserRemovedFromPool',
-    'DebugSwapEntered',      // ⭐ CRITICAL DEBUG - Always emitted on swaps
-    'DebugSwapCalculation',
-    'DebugUserFeeShare', 
-    'DebugSwapError',
-    'DebugActiveUsers'
-];
+interface HookEventConfig {
+    rpcUrl: string;
+    hookAddress: string;
+}
 
-class EventCollector {
+interface HookEvent {
+    name: string;
+    signature: string;
+    blockNumber: bigint;
+    transactionHash: string;
+    data: any;
+    address: string;
+}
+
+class HookEventListener {
     private client;
-    private readonly hookAddress;
-    private readonly poolManagerAddress;
-    private eventHandlers;
-    private isMonitoring: boolean = false;
+    private readonly hookAddress: string;
+    private isListening: boolean = false;
     private unsubscribe?: () => void;
-    private eventSignatures: { [key: string]: string } = {};
 
-    constructor(config) {
+    // Your hook's key events (based on your logs showing "_afterSwap")
+    private readonly hookEvents = [
+        'event HookSwap(bytes32 indexed poolId, address indexed user, int128 amount0Delta, int128 amount1Delta)',
+        'event DebugSwapEntered(address indexed user, bytes32 indexed poolId)',
+        'event FeesCollected(address indexed user, bytes32 indexed poolId, uint256 amount)',
+        'event FeesCompounded(address indexed user, uint256 amount)'
+    ];
+
+    constructor(config: HookEventConfig) {
         this.client = createPublicClient({
             chain: anvil,
             transport: http(config.rpcUrl)
         });
         this.hookAddress = config.hookAddress;
-        this.poolManagerAddress = config.poolManagerAddress || '0x000000000004444c5dc75cB358380D2e3dE08A90';
-        this.eventHandlers = new Map();
 
-        // Calculate event signatures from exact contract definitions
-        this.calculateEventSignatures();
+        console.log(`🎯 Hook Event Listener initialized for: ${this.hookAddress}`);
     }
 
-    // Calculate event signatures + Add Uniswap V4 core events
-    private calculateEventSignatures() {
-        const eventSignatureMap = {
-            // YieldMaximizerHook Events
-            'StrategyActivated(address,bytes32)': 'StrategyActivated',
-            'StrategyDeactivated(address,bytes32)': 'StrategyDeactivated',
-            'StrategyUpdated(address,uint256,uint8)': 'StrategyUpdated',
-            'FeesCollected(address,bytes32,uint256)': 'FeesCollected',
-            'FeesCompounded(address,uint256)': 'FeesCompounded',
-            'BatchScheduled(address,bytes32,uint256)': 'BatchScheduled',
-            'BatchExecuted(bytes32,uint256,uint256,uint256)': 'BatchExecuted',
-            'EmergencyCompound(address,bytes32,uint256)': 'EmergencyCompound',
-            'UserAddedToPool(address,bytes32,uint256)': 'UserAddedToPool',
-            'UserRemovedFromPool(address,bytes32)': 'UserRemovedFromPool',
-            'HookSwap(bytes32,address,int128,int128,uint128,uint128)': 'HookSwap',
-            'DebugSwapEntered(address,bytes32,uint256)': 'DebugSwapEntered',
-            'DebugSwapCalculation(bytes32,uint256,uint256,uint256)': 'DebugSwapCalculation',
-            'DebugUserFeeShare(address,bytes32,uint256,uint256,bool)': 'DebugUserFeeShare',
-            'DebugSwapError(string,bytes32,address)': 'DebugSwapError',
-            'DebugActiveUsers(bytes32,uint256)': 'DebugActiveUsers',
-
-            // OFFICIAL Uniswap V4 PoolManager Events (from IPoolManager.sol)  
-            'Swap(bytes32,address,int128,int128,uint160,uint128,int24,uint24)': 'V4_Swap_Official',
-            
-            // Let's add the mystery signature we found
-            'unknown_f208f491': 'Mystery_V4_Event', // Manually add until we identify it
-            'ModifyLiquidity(bytes32,address,int128,int128,bytes32)': 'V4_ModifyLiquidity', 
-            'Initialize(bytes32,address,uint160,int24)': 'V4_Initialize',
-            
-            // Standard ERC20/Token Events
-            'Transfer(address,address,uint256)': 'Transfer',
-            'Approval(address,address,uint256)': 'Approval',
-            
-            // Add more known signatures as we discover them
-        };
-
-        // Calculate keccak256 hashes for all event signatures
-        Object.entries(eventSignatureMap).forEach(([signature, name]) => {
-            const hash = keccak256(toHex(signature));
-            this.eventSignatures[hash] = name;
-        });
-
-        console.error('Event signatures calculated:', Object.keys(this.eventSignatures).length);
-        console.error('Monitoring addresses:', {
-            hook: this.hookAddress,
-            poolManager: this.poolManagerAddress
-        });
-    }
-
-    // Enhanced event decoder with data analysis
-    private decodeEventName(log): string {
-        if (!log.topics || log.topics.length === 0) {
-            return 'Unknown_NoTopics';
-        }
-
-        const signature = log.topics[0];
-        const eventName = this.eventSignatures[signature];
-
-        if (!eventName) {
-            // Enhanced analysis for unknown events
-            console.error(`🔍 UNKNOWN EVENT DETECTED:`);
-            console.error(`  Signature: ${signature}`);
-            console.error(`  Address: ${log.address}`);
-            console.error(`  Block: ${log.blockNumber}`);
-            console.error(`  Transaction: ${log.transactionHash}`);
-            
-            // Analyze the data payload
-            this.analyzeEventData(log.data, log.topics);
-            
-            return `Unknown_${signature.slice(0, 10)}`;
-        }
-
-        return eventName;
-    }
-
-    // Analyze mysterious event data
-    private analyzeEventData(data: string, topics: string[]): void {
-        console.error(`  Data length: ${data.length}`);
-        console.error(`  Topics count: ${topics.length}`);
-        console.error(`  Raw data: ${data}`);
-        
-        if (data.length > 2) {
-            try {
-                const dataWithoutPrefix = data.slice(2);
-                const chunks = [];
-                for (let i = 0; i < dataWithoutPrefix.length; i += 64) {
-                    chunks.push('0x' + dataWithoutPrefix.slice(i, i + 64));
-                }
-                console.error(`  Data chunks:`, chunks);
-                
-                chunks.forEach((chunk, i) => {
-                    const asNumber = BigInt(chunk);
-                    const asAddress = '0x' + chunk.slice(26);
-                    console.error(`    Chunk ${i}: ${chunk} -> BigInt: ${asNumber} | Address: ${asAddress}`);
-                });
-            } catch (e) {
-                console.error(`  Failed to decode data:`, e);
-            }
-        }
-    }
-
-    // Monitor all hook events - COMPLETE IMPLEMENTATION
-    async startEventMonitoring(): Promise<void> {
-        // Check if already monitoring
-        if (this.isMonitoring) {
-            console.warn('⚠️ Event monitoring is already active');
+    // Start listening to hook events
+    async startListening(): Promise<void> {
+        if (this.isListening) {
+            console.warn('⚠️ Already listening to events');
             return;
         }
 
-        console.error('🚀 Starting YieldMaximizer Event Monitoring...');
-        console.error(`📍 Hook Address: ${this.hookAddress}`);
-        console.error(`🎯 Monitoring ${events.length} event types`);
-
-        // Log computed event signatures for debugging
-        console.error('📊 Event signatures computed:');
-        // Object.entries(this.eventSignatures).forEach(([sig, name]) => {
-        //     if (events.includes(name)) {
-        //         console.error(`  ${name}: ${sig}`);
-        //     }
-        // });
+        console.log('🚀 Starting hook event listener...');
 
         try {
-            // Test connection first
+            // Test connection
             const currentBlock = await this.client.getBlockNumber();
-            console.error(`📦 Connected! Current block: ${currentBlock}`);
+            console.log(`📦 Connected! Current block: ${currentBlock}`);
 
-            // Monitor ALL events from ALL addresses (not just hook and pool manager)
-            this.unsubscribe = this.client.watchEvent({
+            // Watch for events from your hook address only
+            this.unsubscribe = this.client.watchContractEvent({
+                address: this.hookAddress as `0x${string}`,
+                // Watch all events by not specifying specific events
                 onLogs: (logs) => {
-                    console.error(`📡 Received ${logs.length} total events`);
-                    // Process ALL events to see everything
-                    this.processEvents(logs);
+                    console.log(`📡 Received ${logs.length} hook events`);
+                    this.processHookEvents(logs);
                 },
                 onError: (error) => {
                     console.error('❌ Event subscription error:', error);
-                    this.isMonitoring = false;
+                    this.isListening = false;
                 }
             });
 
-            // Mark as monitoring
-            this.isMonitoring = true;
-            console.error('✅ Event monitoring started successfully!');
+            this.isListening = true;
+            console.log('✅ Hook event listener started!');
 
         } catch (error) {
-            console.error('❌ Failed to start event monitoring:', error);
-            this.isMonitoring = false;
+            console.error('❌ Failed to start listener:', error);
             throw error;
         }
     }
 
-    async processEvents(logs) {
-        if (!logs || logs.length === 0) {
-            return;
-        }
-
-        console.error(`🔄 Processing ${logs.length} event logs...`);
-
+    // Process hook events
+    private processHookEvents(logs: any[]): void {
         for (const log of logs) {
             try {
-                // Check if this event is from our contracts
-                const isFromHook = log.address?.toLowerCase() === this.hookAddress.toLowerCase();
-                const isFromPoolManager = log.address?.toLowerCase() === this.poolManagerAddress.toLowerCase();
-
-                // Use manual decoding since ABI isn't working
-                const eventName = this.decodeEventName(log);
-
-                // Transform raw log into structured event data
-                const event = {
-                    type: eventName,
-                    data: log.args || log.data || {},
-                    blockNumber: log.blockNumber || 0n,
-                    transactionHash: log.transactionHash || '0x',
-                    timestamp: Date.now(),
-                    logIndex: log.logIndex || 0,
-                    address: log.address || '0x',
-                    isFromHook: isFromHook,
-                    isFromPoolManager: isFromPoolManager,
-                    rawSignature: log.topics?.[0] || 'no-signature'
-                };
-
-                // Log ALL events (don't skip any)
-                if (isFromHook) {
-                    console.error(`✅ Hook event: ${eventName} from ${event.address}`);
-                } else if (isFromPoolManager) {
-                    console.error(`🔷 PoolManager event: ${eventName} from ${event.address}`);
-                } else {
-                    console.error(`🔍 Other contract event: ${eventName} from ${event.address}`);
-                }
-                
-                // Process ALL events, don't skip any
-
-                // Process each event individually
-                await this.handleEvent(event);
-
+                const event = this.decodeEvent(log);
+                this.handleHookEvent(event);
             } catch (error) {
-                console.error('❌ Error processing individual event log:', error, log);
-                // Continue processing other events even if one fails
+                console.error('❌ Error processing event:', error);
+            }
+        }
+    }
+
+    // Decode event data
+    private decodeEvent(log: any): HookEvent {
+        // Based on your logs, we know the main event is "_afterSwap"
+        // Topic: 0x56f074d292557f2e3c567d982816e0fb5b72100ff196892f8fbd23b8a9073679
+        const eventName = this.getEventName(log.topics?.[0]);
+
+        return {
+            name: eventName,
+            signature: log.topics?.[0] || 'unknown',
+            blockNumber: log.blockNumber,
+            transactionHash: log.transactionHash,
+            data: log.data,
+            address: log.address
+        };
+    }
+
+    // Get event name from signature
+    private getEventName(signature: string): string {
+        // Your known event from the logs
+        if (signature === '0x56f074d292557f2e3c567d982816e0fb5b72100ff196892f8fbd23b8a9073679') {
+            return 'AfterSwap';
+        }
+
+        // Add more as you discover them
+        const knownEvents: Record<string, string> = {
+            [keccak256(toHex('HookSwap(bytes32,address,int128,int128)'))]: 'HookSwap',
+            [keccak256(toHex('FeesCollected(address,bytes32,uint256)'))]: 'FeesCollected',
+            [keccak256(toHex('DebugSwapEntered(address,bytes32)'))]: 'DebugSwapEntered'
+        };
+
+        return knownEvents[signature] || `Unknown_${signature.slice(0, 10)}`;
+    }
+
+    // Handle individual hook events
+    private handleHookEvent(event: HookEvent): void {
+        console.log(`🎉 Hook Event: ${event.name}`);
+        console.log(`   Block: ${event.blockNumber}`);
+        console.log(`   Tx: ${event.transactionHash.slice(0, 16)}...`);
+
+        // Decode the data based on your logs showing "_afterSwap"
+        if (event.data && event.data !== '0x') {
+            try {
+                // Your event data shows: "_afterSwap" as a string
+                const decoded = this.decodeStringData(event.data);
+                console.log(`   Data: ${decoded}`);
+            } catch (e) {
+                console.log(`   Raw Data: ${event.data}`);
             }
         }
 
-        console.error(`✅ Completed processing ${logs.length} events`);
+        // Handle specific events
+        switch (event.name) {
+            case 'AfterSwap':
+                this.onAfterSwap(event);
+                break;
+            case 'HookSwap':
+                this.onHookSwap(event);
+                break;
+            case 'FeesCollected':
+                this.onFeesCollected(event);
+                break;
+            default:
+                console.log(`   Unknown event: ${event.name}`);
+        }
     }
 
-    async handleEvent(event) {
+    // Decode string data (like "_afterSwap" from your logs)
+    private decodeStringData(data: string): string {
         try {
-            // Log the event for debugging
-            // Use JSON.stringify for better readability
-            console.error(`📡 [${new Date(event.timestamp).toLocaleTimeString()}] ${event.type}:`);
-            console.error('Event Details:', JSON.stringify({
-                block: Number(event.blockNumber),
-                tx: event.transactionHash?.slice(0, 16) + '...',
-                address: event.address,
-                signature: event.rawSignature,
-                data: event.data
-            }, null, 2));
-
-            // Notify registered event handlers for this specific event type
-            const handlers = this.eventHandlers.get(event.type);
-            if (handlers) {
-                for (const handler of handlers) {
-                    try {
-                        await handler(event);
-                    } catch (error) {
-                        console.error(`❌ Error in event handler for ${event.type}:`, error);
-                    }
-                }
-            }
-
-            // Notify global handlers (registered for all events with '*')
-            const globalHandlers = this.eventHandlers.get('*');
-            if (globalHandlers) {
-                for (const handler of globalHandlers) {
-                    try {
-                        await handler(event);
-                    } catch (error) {
-                        console.error('❌ Error in global event handler:', error);
-                    }
-                }
-            }
-
-        } catch (error) {
-            console.error('❌ Error handling event:', error, event);
+            // Remove 0x prefix
+            const hex = data.slice(2);
+            // Skip first 64 chars (offset) and next 64 chars (length)
+            const stringHex = hex.slice(128);
+            // Convert hex to string
+            return Buffer.from(stringHex, 'hex').toString('utf8').replace(/\0/g, '');
+        } catch (e) {
+            return 'Failed to decode';
         }
     }
 
-    // Register event handler for specific event type - COMPLETE IMPLEMENTATION
-    onEvent(eventType, handler) {
-        // Create handler set if it doesn't exist
-        if (!this.eventHandlers.has(eventType)) {
-            this.eventHandlers.set(eventType, new Set());
+    // Event handlers
+    private onAfterSwap(event: HookEvent): void {
+        console.log('✅ afterSwap hook executed successfully!');
+    }
+
+    private onHookSwap(event: HookEvent): void {
+        console.log('💱 Swap processed through hook');
+    }
+
+    private onFeesCollected(event: HookEvent): void {
+        console.log('💰 Fees collected by hook');
+    }
+
+    // Stop listening
+    async stopListening(): Promise<void> {
+        if (this.unsubscribe) {
+            this.unsubscribe();
+            this.isListening = false;
+            console.log('🛑 Stopped listening to hook events');
         }
+    }
 
-        // Add the handler to the set
-        this.eventHandlers.get(eventType).add(handler);
-
-        console.log(`📝 Event handler registered for: ${eventType}`);
+    // Get listening status
+    isCurrentlyListening(): boolean {
+        return this.isListening;
     }
 }
 
-export default EventCollector;
+export default HookEventListener;
+
+// Usage example:
+/*
+const listener = new HookEventListener({
+  rpcUrl: 'http://127.0.0.1:8545',
+  hookAddress: '0x50D1b723B364dD8f41B5b394DE9a8870Bb49D540'
+});
+
+// Start listening
+await listener.startListening();
+
+// Run your swaps...
+
+// Stop when done
+await listener.stopListening();
+*/
