@@ -199,7 +199,7 @@ contract LiquidityProvision is Script {
                 amount0Max,
                 amount1Max,
                 deployer,
-                bytes("")
+                abi.encode(deployer)
             );
 
             params[1] = abi.encode(key.currency0, key.currency1);

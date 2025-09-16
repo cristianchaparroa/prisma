@@ -55,12 +55,15 @@ for account in "${accounts[@]}"; do
         balance=$(cast call "$token_addr" "balanceOf(address)" "$account_addr" --rpc-url "$ANVIL_RPC_URL" 2>/dev/null || echo "0x00")
         balance_dec=$(cast to-dec "$balance" 2>/dev/null || echo "0")
 
-        if [ "$balance_dec" = "0" ]; then
+        # Use bc for large number comparison
+        is_zero=$(echo "$balance_dec == 0" | bc 2>/dev/null || echo "1")
+
+        if [ "$is_zero" = "1" ]; then
             echo "  ERROR: $token_name balance is 0"
             ((error_count++))
         else
-            # Format balance based on decimals
-            readable=$(python3 -c "print(f'{$balance_dec / 10**$decimals:.4f}')" 2>/dev/null || echo "$balance_dec")
+            # Format balance based on decimals using bc
+            readable=$(echo "scale=4; $balance_dec / (10^$decimals)" | bc -l 2>/dev/null || echo "$balance_dec")
             echo "  OK: $token_name balance: $readable"
         fi
     done

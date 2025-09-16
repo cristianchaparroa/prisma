@@ -24,7 +24,9 @@ usdc_readable=$(python3 -c "print(f'{$usdc_dec / 10**6:.2f}')" 2>/dev/null)
 echo "  Current: $usdc_readable USDC ($usdc_dec units)"
 echo "  Required: 50,000 USDC ($REQUIRED_USDC units)"
 
-if [ "$usdc_dec" -lt "$REQUIRED_USDC" ]; then
+# Use bc for large number comparison
+is_insufficient=$(echo "$usdc_dec < $REQUIRED_USDC" | bc 2>/dev/null || echo "1")
+if [ "$is_insufficient" = "1" ]; then
     echo "  ERROR: Insufficient USDC funding"
     ((error_count++))
 else
@@ -40,7 +42,9 @@ weth_readable=$(python3 -c "print(f'{$weth_dec / 10**18:.4f}')" 2>/dev/null)
 echo "  Current: $weth_readable WETH ($weth_dec wei)"
 echo "  Required: 20 WETH ($REQUIRED_WETH wei)"
 
-if [ "$weth_dec" -lt "$REQUIRED_WETH" ]; then
+# Use bc for large number comparison
+is_insufficient=$(echo "$weth_dec < $REQUIRED_WETH" | bc 2>/dev/null || echo "1")
+if [ "$is_insufficient" = "1" ]; then
     echo "  ERROR: Insufficient WETH funding"
     ((error_count++))
 else
@@ -56,7 +60,9 @@ dai_readable=$(python3 -c "print(f'{$dai_dec / 10**18:.2f}')" 2>/dev/null)
 echo "  Current: $dai_readable DAI ($dai_dec wei)"
 echo "  Required: 50,000 DAI ($REQUIRED_DAI wei)"
 
-if [ "$dai_dec" -lt "$REQUIRED_DAI" ]; then
+# Use bc for large number comparison
+is_insufficient=$(echo "$dai_dec < $REQUIRED_DAI" | bc 2>/dev/null || echo "1")
+if [ "$is_insufficient" = "1" ]; then
     echo "  ERROR: Insufficient DAI funding"
     ((error_count++))
 else
@@ -72,7 +78,9 @@ wbtc_readable=$(python3 -c "print(f'{$wbtc_dec / 10**8:.4f}')" 2>/dev/null)
 echo "  Current: $wbtc_readable WBTC ($wbtc_dec units)"
 echo "  Required: 1 WBTC ($REQUIRED_WBTC units)"
 
-if [ "$wbtc_dec" -lt "$REQUIRED_WBTC" ]; then
+# Use bc for large number comparison
+is_insufficient=$(echo "$wbtc_dec < $REQUIRED_WBTC" | bc 2>/dev/null || echo "1")
+if [ "$is_insufficient" = "1" ]; then
     echo "  ERROR: Insufficient WBTC funding"
     ((error_count++))
 else

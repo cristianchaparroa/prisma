@@ -254,4 +254,4 @@ echo "#### --> Validations... <--- #####"
 ./scripts/validations/02_validate-pool.sh
 ./scripts/validations/03_validate_funds.sh
 ./scripts/validations/03_validate_token_funds.sh
-./scripts/local/06_add-pool-liquidity.sh
+
