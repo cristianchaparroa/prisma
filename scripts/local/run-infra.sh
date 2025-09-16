@@ -231,7 +231,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-print_step "Step 1.6: Add liquidity..."
+print_step "Step 1.7: Add liquidity..."
 forge script script/local/fork/06_LiquidityProvision.s.sol --tc LiquidityProvision \
     --rpc-url $ANVIL_RPC_URL \
     --private-key $ANVIL_PRIVATE_KEY \

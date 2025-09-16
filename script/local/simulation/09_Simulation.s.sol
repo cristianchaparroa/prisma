@@ -35,9 +35,9 @@ library Actions {
     }
 
 /**
- * SwapSimulation - Production V4 Swaps using UniversalRouter with Hook Monitoring
+ * Simulation - Production V4 Swaps using UniversalRouter with Hook Monitoring
  */
-contract SwapSimulation is Script {
+contract Simulation is Script {
 
     struct SwapConfig {
         address account;
