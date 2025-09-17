@@ -44,16 +44,16 @@ The **Yield-Maximizing Auto-Compounder Hook** automatically optimizes liquidity 
    - Infura: https://infura.io  
    - Public: https://ethereum.publicnode.com
 
-### **Run Complete Simulation**
+### **Create the infrastructure**
 
 ```bash
 # Complete setup from scratch with full simulation
-./scripts/local/run-simulation.sh <MAINNET_RPC_URL>
+./scripts/local/run-infra.sh <MAINNET_RPC_URL>
 ```
 
 **Example:**
 ```bash
-./scripts/local/run-simulation.sh https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY
+./scripts/local/run-infra.sh https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY
 ```
 
 This script automatically:
@@ -62,60 +62,36 @@ This script automatically:
 - Funds 9 test accounts from mainnet whale addresses
 - Deploys YieldMaximizerHook
 - Creates 4 hook-enabled liquidity pools (USDC/WETH, USDC/DAI, WETH/DAI, WBTC/WETH)
-- Provides substantial initial liquidity to all pools
-- Executes user simulation with 9 diverse trading personas
-- Runs trading simulation generating 75+ trades with realistic fees
-- Provides complete analysis and results
-
+- Provides initial liquidity to all pools
 ---
 
 ## 🎭 **Simulation Details**
 
-### **What Gets Deployed**
+- Executes user simulation with 9 diverse trading personas
+- Runs trading simulation generating 75+ trades with realistic fees
+- Provides complete analysis and results
 
-**Real Mainnet Contracts (via Fork):**
-- USDC: `0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48`
-- WETH: `0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2`
-- DAI: `0x6B175474E89094C44Da98b954EedeAC495271d0F`
-- WBTC: `0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599`
-- Permit2: `0x000000000022D473030F116dDEE9F6B43aC78BA3`
 
-**Fresh V4 Infrastructure:**
-- PoolManager (deployed fresh)
-- PositionManager (deployed fresh) 
-- YieldMaximizerHook (deployed fresh)
+### 1. Web
 
-### **User Simulation Personas**
-
-The simulation creates 9 different user types:
-- **3 Conservative Users**: Low-risk, stable strategies
-- **3 Moderate Users**: Balanced risk/reward approach  
-- **2 Aggressive Users**: High-risk, high-reward strategies
-- **1 Whale User**: Large diversified positions
-
-### **Expected Results**
-
-A successful simulation will show:
+Before start the simulation start the web project
 ```
-📋 Summary:
-  ✅ Infrastructure: Deployed (PoolManager, Hook, PositionManager)
-  ✅ Tokens: Verified mainnet tokens (USDC, WETH, DAI, WBTC)
-  ✅ Funding: 9 accounts funded from whale addresses
-  ✅ Liquidity: Pools provisioned with substantial token amounts
-  ✅ Simulation: User and trading simulations executed
-  ✅ Trading: 38 trades, $4715 volume, $4 fees
-
-🔧 Environment Details:
-  • Anvil PID: 90699
-  • RPC URL: http://localhost:8545
-  • Chain ID: 31337
-  • Fork Block: 23344464
-  • PoolManager: 0xe55F53b29d5466302b5562e91847e24D0Be1F7FA
-  • Hook Address: 0x118E7fd28e3Ce36a7ea45B8eb0dD2D033d3E9540
-
-📁 Generated Files:
-  • Environment: .env
-  • Logs: user_simulation.log, trading_simulation.log
-  • Results: deployments/simulation-*.env
+cd web
+bun install
+bun dev
 ```
+
+### 2. Execute the simulation
+
+```bash
+./scripts/local/execute-simulation.sh
+```
+
+### 3. Web listener
+Once The simulation is executed you could start to see the event listener in the browser 
+printing information about the simulation.
+
+
+
+
 
