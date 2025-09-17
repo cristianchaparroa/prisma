@@ -113,7 +113,8 @@ ANVIL_ADDRESS=0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
 
 # Real Mainnet Infrastructure (Battle-tested)
 PERMIT2=0x000000000022D473030F116dDEE9F6B43aC78BA3
-UNIVERSAL_ROUTER=0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD
+UNIVERSAL_ROUTER=0x66a9893cc07d91d95644aedd05d03f95e1dba8af
+POOL_MANAGER=0x000000000004444c5dc75cB358380D2e3dE08A90
 
 # Real Mainnet Tokens (High Liquidity)
 TOKEN_USDC=0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
@@ -215,13 +216,42 @@ forge script script/local/fork/04_CreateMainnetPools.s.sol \
     --rpc-url $ANVIL_RPC_URL \
     --private-key $ANVIL_PRIVATE_KEY \
     --broadcast \
-    --skip-simulation
+    -vvv --gas-estimate-multiplier 200
 
 if [ $? -ne 0 ]; then
     print_error "Pool creation failed!"
     exit 1
 fi
 
+print_step "Step 1.6: Add Funds ..."
+./scripts/local/05_fund-accounts-manual.sh
+
+if [ $? -ne 0 ]; then
+    print_error "Funds injection failed!"
+    exit 1
+fi
+
+print_step "Step 1.7: Add liquidity..."
+forge script script/local/fork/06_LiquidityProvision.s.sol --tc LiquidityProvision \
+    --rpc-url $ANVIL_RPC_URL \
+    --private-key $ANVIL_PRIVATE_KEY \
+    --broadcast \
+    --skip-simulation \
+    -vvv --gas-estimate-multiplier 200
+
+if [ $? -ne 0 ]; then
+    print_error "Liquidity injection failed!"
+    exit 1
+fi
+
+./scripts/local/05_fund-accounts-manual.sh
+
 print_success "Infrastructure deployed successfully"
 
+
+echo "#### --> Validations... <--- #####"
+./scripts/validations/01_validate-hook.sh
+./scripts/validations/02_validate-pool.sh
+./scripts/validations/03_validate_funds.sh
+./scripts/validations/03_validate_token_funds.sh
 

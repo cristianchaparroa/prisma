@@ -19,3 +19,5 @@ deployments
 accounts.json
 trading_simulation.log
 user_simulation.log
+
+web/src/generated/

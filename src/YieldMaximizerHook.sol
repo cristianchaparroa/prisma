@@ -57,14 +57,6 @@ contract YieldMaximizerHook is BaseHook {
         PoolId poolId;
     }
 
-    struct BatchExecution {
-        PoolId poolId;
-        uint256 totalAmount;
-        uint256 userCount;
-        uint256 gasUsed;
-        uint256 timestamp;
-    }
-
     // State variables
     mapping(address => UserStrategy) public userStrategies;
     mapping(PoolId => PoolStrategy) public poolStrategies;
@@ -95,15 +87,7 @@ contract YieldMaximizerHook is BaseHook {
     event UserRemovedFromPool(address indexed user, PoolId indexed poolId);
 
     // Debug Events
-    event DebugSwapEntered(address indexed sender, PoolId indexed poolId, uint256 blockNumber);
-    event DebugSwapCalculation(
-        PoolId indexed poolId, uint256 totalFeesGenerated, uint256 totalPoolLiquidity, uint256 activeUsersCount
-    );
-    event DebugUserFeeShare(
-        address indexed user, PoolId indexed poolId, uint256 userLiquidity, uint256 userFeeShare, bool hasActiveStrategy
-    );
-    event DebugSwapError(string reason, PoolId indexed poolId, address indexed sender);
-    event DebugActiveUsers(PoolId indexed poolId, uint256 count);
+    event DebugEvent(string s);
 
     constructor(IPoolManager _poolManager) BaseHook(_poolManager) {}
 
@@ -131,6 +115,7 @@ contract YieldMaximizerHook is BaseHook {
         override
         returns (bytes4)
     {
+        emit DebugEvent("_afterInitialize");
         // Initialize pool strategy when pool is created
         PoolId poolId = key.toId();
         poolStrategies[poolId].isActive = true;
@@ -143,6 +128,7 @@ contract YieldMaximizerHook is BaseHook {
         override
         returns (bytes4, int128)
     {
+        emit DebugEvent("_afterSwap");
         PoolId poolId = key.toId();
         uint256 totalFeesGenerated = calculateFeesFromSwap(key, delta);
 
@@ -203,6 +189,7 @@ contract YieldMaximizerHook is BaseHook {
         BalanceDelta, /* feesAccrued */
         bytes calldata hookData
     ) internal override returns (bytes4, BalanceDelta) {
+        emit DebugEvent("_afterAddLiquidity");
         PoolId poolId = key.toId();
 
         // Determine the actual user - either from hookData or sender
@@ -248,6 +235,7 @@ contract YieldMaximizerHook is BaseHook {
         BalanceDelta, /* feesAccrued */
         bytes calldata hookData
     ) internal override returns (bytes4, BalanceDelta) {
+        emit DebugEvent("_afterRemoveLiquidity");
         PoolId poolId = key.toId();
 
         // Determine the actual user - either from hookData or sender

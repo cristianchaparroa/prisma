@@ -6,7 +6,6 @@ import {PoolManager} from "v4-core/PoolManager.sol";
 import {PoolKey} from "v4-core/types/PoolKey.sol";
 import {Currency} from "v4-core/types/Currency.sol";
 import {IHooks} from "v4-core/interfaces/IHooks.sol";
-import {TickMath} from "v4-core/libraries/TickMath.sol";
 
 contract CreateMainnetPools is Script {
     function run() external {
@@ -37,12 +36,11 @@ contract CreateMainnetPools is Script {
             hooks: hook
         });
 
-        // DAI/USDC - Stable pair (0x6B17 < 0xa0b8)
         pools[2] = PoolKey({
             currency0: Currency.wrap(vm.envAddress("TOKEN_DAI")),
             currency1: Currency.wrap(vm.envAddress("TOKEN_USDC")),
-            fee: 500, // 0.05%
-            tickSpacing: 10,
+            fee: 3000, // Change from 500 to 3000
+            tickSpacing: 60, // Change from 10 to 60
             hooks: hook
         });
 
@@ -58,7 +56,7 @@ contract CreateMainnetPools is Script {
         // Initialize all pools with market prices
         initializePool(poolManager, pools[0], 79228162514264337593543950336); // ~$3000 ETH
         initializePool(poolManager, pools[1], 79228162514264337593543950336); // ~$3000 ETH
-        initializePool(poolManager, pools[2], 79228162514264337593543950336); // $1 DAI/USDC
+        initializePool(poolManager, pools[2], 79228162514264337593543950336); // correct for 1:1
         initializePool(poolManager, pools[3], 158456325028528675187087900672); // ~$60K BTC
 
         vm.stopBroadcast();
@@ -67,12 +65,20 @@ contract CreateMainnetPools is Script {
     }
 
     function initializePool(PoolManager poolManager, PoolKey memory poolKey, uint160 sqrtPriceX96) internal {
-        poolManager.initialize(poolKey, sqrtPriceX96);
-        console2.log(
-            "Pool initialized:",
-            vm.toString(Currency.unwrap(poolKey.currency0)),
-            "/",
-            vm.toString(Currency.unwrap(poolKey.currency1))
-        );
+        try poolManager.initialize(poolKey, sqrtPriceX96) returns (int24 tick) {
+            console2.log("Pool initialized successfully");
+            console2.log("Currency0:", vm.toString(Currency.unwrap(poolKey.currency0)));
+            console2.log("Currency1:", vm.toString(Currency.unwrap(poolKey.currency1)));
+            console2.log("Tick:", vm.toString(tick));
+        } catch Error(string memory reason) {
+            console2.log("Pool initialization failed");
+            console2.log("Reason:", reason);
+            console2.log("Currency0:", vm.toString(Currency.unwrap(poolKey.currency0)));
+            console2.log("Currency1:", vm.toString(Currency.unwrap(poolKey.currency1)));
+        } catch (bytes memory) {
+            console2.log("Pool initialization failed with unknown error");
+            console2.log("Currency0:", vm.toString(Currency.unwrap(poolKey.currency0)));
+            console2.log("Currency1:", vm.toString(Currency.unwrap(poolKey.currency1)));
+        }
     }
 }
