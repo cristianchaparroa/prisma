@@ -26,19 +26,18 @@ library Actions {
 }
 
 // V4Router ExactInputSingleParams struct
-    struct ExactInputSingleParams {
-        PoolKey poolKey;
-        bool zeroForOne;
-        uint128 amountIn;
-        uint128 amountOutMinimum;
-        bytes hookData;
-    }
+struct ExactInputSingleParams {
+    PoolKey poolKey;
+    bool zeroForOne;
+    uint128 amountIn;
+    uint128 amountOutMinimum;
+    bytes hookData;
+}
 
 /**
  * Simulation - Production V4 Swaps using UniversalRouter with Hook Monitoring
  */
 contract Simulation is Script {
-
     struct SwapConfig {
         address account;
         uint256 privateKey;
@@ -103,7 +102,7 @@ contract Simulation is Script {
         uint256 startBlock = block.number;
         console2.log("Starting block: %s", vm.toString(startBlock));
 
-        for (uint i = 0; i < swaps.length; i++) {
+        for (uint256 i = 0; i < swaps.length; i++) {
             _executeSwap(swaps[i], universalRouterAddr, permit2Addr, hookAddr, i);
         }
 
@@ -142,10 +141,7 @@ contract Simulation is Script {
         // Permit2 approvals
         IERC20(config.tokenIn).approve(permit2Addr, config.amountIn * 2);
         IAllowanceTransfer(permit2Addr).approve(
-            config.tokenIn,
-            universalRouterAddr,
-            uint160(config.amountIn * 2),
-            uint48(block.timestamp + 3600)
+            config.tokenIn, universalRouterAddr, uint160(config.amountIn * 2), uint48(block.timestamp + 3600)
         );
 
         uint256 balanceInBefore = IERC20(config.tokenIn).balanceOf(config.account);
@@ -157,11 +153,8 @@ contract Simulation is Script {
         bytes[] memory inputs = new bytes[](1);
 
         // V4Router actions
-        bytes memory actions = abi.encodePacked(
-            uint8(Actions.SWAP_EXACT_IN_SINGLE),
-            uint8(Actions.SETTLE_ALL),
-            uint8(Actions.TAKE_ALL)
-        );
+        bytes memory actions =
+            abi.encodePacked(uint8(Actions.SWAP_EXACT_IN_SINGLE), uint8(Actions.SETTLE_ALL), uint8(Actions.TAKE_ALL));
 
         // Create PoolKey
         PoolKey memory poolKey = PoolKey({
@@ -189,10 +182,7 @@ contract Simulation is Script {
         );
 
         // SETTLE_ALL params
-        params[1] = abi.encode(
-            zeroForOne ? poolKey.currency0 : poolKey.currency1,
-            config.amountIn
-        );
+        params[1] = abi.encode(zeroForOne ? poolKey.currency0 : poolKey.currency1, config.amountIn);
 
         // TAKE_ALL params
         params[2] = abi.encode(
@@ -211,10 +201,19 @@ contract Simulation is Script {
 
             // Show how to verify hook execution for this specific swap
             uint256 blockAfter = block.number;
-            console2.log("Swap %s executed in blocks %s to %s", vm.toString(swapIndex + 1), vm.toString(blockBefore), vm.toString(blockAfter));
+            console2.log(
+                "Swap %s executed in blocks %s to %s",
+                vm.toString(swapIndex + 1),
+                vm.toString(blockBefore),
+                vm.toString(blockAfter)
+            );
             console2.log("Check this swap's hook events:");
-            console2.log("  cast logs --address %s --from-block %s --to-block %s", hookAddr, vm.toString(blockBefore), vm.toString(blockAfter));
-
+            console2.log(
+                "  cast logs --address %s --from-block %s --to-block %s",
+                hookAddr,
+                vm.toString(blockBefore),
+                vm.toString(blockAfter)
+            );
         } catch Error(string memory reason) {
             console2.log("FAILED:", reason);
         }

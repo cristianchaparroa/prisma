@@ -37,25 +37,13 @@ contract LiquidityAdder {
         bytes calldata hookData
     ) external {
         // Prepare the command sequence
-        bytes memory actions = abi.encodePacked(
-            uint8(Actions.MINT_POSITION),
-            uint8(Actions.SETTLE_PAIR)
-        );
+        bytes memory actions = abi.encodePacked(uint8(Actions.MINT_POSITION), uint8(Actions.SETTLE_PAIR));
 
         // Prepare parameters for each action
         bytes[] memory params = new bytes[](2);
 
         // MINT_POSITION parameters
-        params[0] = abi.encode(
-            poolKey,
-            tickLower,
-            tickUpper,
-            liquidity,
-            amount0Max,
-            amount1Max,
-            recipient,
-            hookData
-        );
+        params[0] = abi.encode(poolKey, tickLower, tickUpper, liquidity, amount0Max, amount1Max, recipient, hookData);
 
         // SETTLE_PAIR parameters
         params[1] = abi.encode(poolKey.currency0, poolKey.currency1);
@@ -64,10 +52,7 @@ contract LiquidityAdder {
         uint256 deadline = block.timestamp + 3600;
 
         // Execute the position creation (no ETH needed for ERC-20 tokens)
-        positionManager.modifyLiquidities(
-            abi.encode(actions, params),
-            deadline
-        );
+        positionManager.modifyLiquidities(abi.encode(actions, params), deadline);
     }
 }
 
@@ -76,13 +61,13 @@ contract LiquidityAdder {
 /* -------------------------------------------------------------------------- */
 
 // Define struct outside the contract
-    struct PoolConfig {
-        address token0;
-        address token1;
-        uint128 amount0;
-        uint128 amount1;
-        string name;
-    }
+struct PoolConfig {
+    address token0;
+    address token1;
+    uint128 amount0;
+    uint128 amount1;
+    string name;
+}
 
 contract LiquidityProvision is Script {
     function run() external {
@@ -114,14 +99,9 @@ contract LiquidityProvision is Script {
         tokens[2] = tokenDAI;
         tokens[3] = tokenWBTC;
 
-        for (uint i = 0; i < tokens.length; i++) {
+        for (uint256 i = 0; i < tokens.length; i++) {
             IERC20(tokens[i]).approve(permit2Addr, type(uint256).max);
-            IAllowanceTransfer(permit2Addr).approve(
-                tokens[i],
-                positionManagerAddr,
-                type(uint160).max,
-                type(uint48).max
-            );
+            IAllowanceTransfer(permit2Addr).approve(tokens[i], positionManagerAddr, type(uint160).max, type(uint48).max);
         }
         console2.log("Permit2 approvals set for all tokens");
 
@@ -132,8 +112,8 @@ contract LiquidityProvision is Script {
         pools[0] = PoolConfig({
             token0: tokenUSDC,
             token1: tokenWETH,
-            amount0: 10_000e6,  // 10,000 USDC
-            amount1: 5e18,      // 5 WETH
+            amount0: 10_000e6, // 10,000 USDC
+            amount1: 5e18, // 5 WETH
             name: "USDC/WETH"
         });
 
@@ -142,7 +122,7 @@ contract LiquidityProvision is Script {
             token0: tokenDAI,
             token1: tokenWETH,
             amount0: 10_000e18, // 10,000 DAI
-            amount1: 5e18,      // 5 WETH
+            amount1: 5e18, // 5 WETH
             name: "DAI/WETH"
         });
 
@@ -151,7 +131,7 @@ contract LiquidityProvision is Script {
             token0: tokenDAI,
             token1: tokenUSDC,
             amount0: 10_000e18, // 10,000 DAI
-            amount1: 10_000e6,  // 10,000 USDC
+            amount1: 10_000e6, // 10,000 USDC
             name: "DAI/USDC"
         });
 
@@ -159,13 +139,13 @@ contract LiquidityProvision is Script {
         pools[3] = PoolConfig({
             token0: tokenWBTC,
             token1: tokenWETH,
-            amount0: 1e8,       // 1 WBTC
-            amount1: 15e18,     // 15 WETH (approx BTC price ratio)
+            amount0: 1e8, // 1 WBTC
+            amount1: 15e18, // 15 WETH (approx BTC price ratio)
             name: "WBTC/WETH"
         });
 
         // Add liquidity to each pool
-        for (uint i = 0; i < pools.length; i++) {
+        for (uint256 i = 0; i < pools.length; i++) {
             PoolConfig memory poolConfig = pools[i];
 
             console2.log("Adding liquidity to", poolConfig.name);
@@ -184,10 +164,7 @@ contract LiquidityProvision is Script {
                 hooks: IHooks(hookAddr)
             });
 
-            bytes memory actions = abi.encodePacked(
-                uint8(Actions.MINT_POSITION),
-                uint8(Actions.SETTLE_PAIR)
-            );
+            bytes memory actions = abi.encodePacked(uint8(Actions.MINT_POSITION), uint8(Actions.SETTLE_PAIR));
 
             bytes[] memory params = new bytes[](2);
 
@@ -206,10 +183,7 @@ contract LiquidityProvision is Script {
 
             uint256 deadline = block.timestamp + 3600;
 
-            try IPositionManager(positionManagerAddr).modifyLiquidities(
-                abi.encode(actions, params),
-                deadline
-            ) {
+            try IPositionManager(positionManagerAddr).modifyLiquidities(abi.encode(actions, params), deadline) {
                 console2.log("Successfully added liquidity to", poolConfig.name);
             } catch Error(string memory reason) {
                 console2.log("Failed to add liquidity to", poolConfig.name, ":", reason);

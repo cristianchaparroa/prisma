@@ -9,10 +9,8 @@ import {YieldMaximizerHook} from "../../../src/YieldMaximizerHook.sol";
 
 contract DeployYieldHook is Script {
     // Hook permissions configuration
-    uint160 public constant PERMISSIONS = uint160(Hooks.AFTER_INITIALIZE_FLAG)
-    | uint160(Hooks.AFTER_ADD_LIQUIDITY_FLAG)
-    | uint160(Hooks.AFTER_REMOVE_LIQUIDITY_FLAG)
-    | uint160(Hooks.AFTER_SWAP_FLAG);
+    uint160 public constant PERMISSIONS = uint160(Hooks.AFTER_INITIALIZE_FLAG) | uint160(Hooks.AFTER_ADD_LIQUIDITY_FLAG)
+        | uint160(Hooks.AFTER_REMOVE_LIQUIDITY_FLAG) | uint160(Hooks.AFTER_SWAP_FLAG);
 
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("ANVIL_PRIVATE_KEY");
@@ -29,7 +27,7 @@ contract DeployYieldHook is Script {
         console2.log("Mining hook address with flags:", flags);
 
         (address hookAddress, bytes32 salt) =
-                            HookMiner.find(CREATE2_FACTORY, flags, type(YieldMaximizerHook).creationCode, constructorArgs);
+            HookMiner.find(CREATE2_FACTORY, flags, type(YieldMaximizerHook).creationCode, constructorArgs);
 
         console2.log("Mined hook address:", hookAddress);
         console2.log("Using salt:", vm.toString(salt));
