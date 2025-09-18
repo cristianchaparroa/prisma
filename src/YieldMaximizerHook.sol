@@ -81,6 +81,7 @@ contract YieldMaximizerHook is BaseHook {
     uint256 public constant MIN_ACTION_INTERVAL = 1 minutes; // Lowered for testing
 
     // Events
+    // TODO: I have a lot of events, let's try to simply this later
     event StrategyActivated(address indexed user, PoolId indexed poolId);
     event StrategyDeactivated(address indexed user, PoolId indexed poolId);
     event StrategyUpdated(address indexed user, uint256 gasThreshold, uint8 riskLevel);
@@ -457,7 +458,8 @@ contract YieldMaximizerHook is BaseHook {
     }
 
     function emergencyCompound(PoolId poolId) external {
-        // BYPASS: Strategy activation check (commented out for testing)
+        // TODO: the strategy activation is not working 100% to avoid issues in the simulation
+        // this is bypassed
         // require(userStrategies[msg.sender].isActive, "Strategy not active");
 
         uint256 amount = userFees[msg.sender][poolId].pendingCompound;
@@ -865,16 +867,16 @@ contract YieldMaximizerHook is BaseHook {
     // TODO: make this generic.
     function _emitTokenSpecificCompoundEvents(address user, PoolId poolId, uint256 totalAmount) internal {
         FeeAccounting memory feeInfo = userFees[user][poolId];
-        
+
         // Check if we have stored token information from fee collection
         if (feeInfo.token0 != address(0) && feeInfo.token1 != address(0)) {
             // We have both tokens - split 50/50 and emit for both
             uint256 halfAmount = totalAmount / 2;
             uint256 remainingAmount = totalAmount - halfAmount;
-            
+
             // Emit compound event for token0
             emit FeesCompounded(user, halfAmount, feeInfo.token0, true);
-            
+
             // Emit compound event for token1
             emit FeesCompounded(user, remainingAmount, feeInfo.token1, false);
         } else {

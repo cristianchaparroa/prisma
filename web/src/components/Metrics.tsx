@@ -31,6 +31,7 @@ interface DashboardMetrics {
     systemHealth: SystemHealth;
     feesByToken: Record<string, TokenFees>; // Track fees by token address
     compoundedByToken: Record<string, TokenFees>; // Track compounded fees by token address
+    pendingByToken: Record<string, TokenFees>; // Track pending fees by token address
 }
 
 interface UserPerformance {
@@ -115,7 +116,8 @@ class EnhancedHookListener {
                 systemUptime: 100
             },
             feesByToken: {}, // Initialize empty token fees tracking
-            compoundedByToken: {} // Initialize empty compounded fees tracking
+            compoundedByToken: {}, // Initialize empty compounded fees tracking
+            pendingByToken: {} // Initialize empty pending fees tracking
         };
     }
 
@@ -372,6 +374,11 @@ class EnhancedHookListener {
                 // Track fees by token
                 if (token && token !== '0x0000000000000000000000000000000000000000') {
                     const tokenInfo = getTokenInfo(token);
+                    console.log(`🔍 Processing fee collection for token ${token.slice(0, 8)}...`, {
+                        tokenInfo: tokenInfo ? `${tokenInfo.symbol} (${tokenInfo.decimals} decimals)` : 'NOT FOUND',
+                        amount: feeAmount.toString()
+                    });
+                    
                     if (tokenInfo) {
                         if (!this.metrics.feesByToken[token]) {
                             this.metrics.feesByToken[token] = {
@@ -380,8 +387,12 @@ class EnhancedHookListener {
                                 amount: 0n,
                                 decimals: tokenInfo.decimals
                             };
+                            console.log(`✅ Created new feesByToken entry for ${tokenInfo.symbol}`);
                         }
                         this.metrics.feesByToken[token].amount += feeAmount;
+                        console.log(`💰 Updated ${tokenInfo.symbol} fees: ${this.metrics.feesByToken[token].amount.toString()}`);
+                    } else {
+                        console.warn(`❌ Token ${token} not found in token config`);
                     }
                 }
                 
@@ -418,6 +429,13 @@ class EnhancedHookListener {
                 // Compounding adds liquidity back to the pool, so it increases TVL
                 this.metrics.totalTVL += compoundedAmount;
                 
+                console.log(`🔄 FeesCompounded event received:`, {
+                    amount: compoundedAmount.toString(),
+                    token: event.args?.token,
+                    isToken0: event.args?.isToken0,
+                    user: event.args?.user
+                });
+                
                 // Track compounded fees by token (similar to fee collection)
                 const compoundToken = event.args?.token;
                 const compoundIsToken0 = event.args?.isToken0;
@@ -425,6 +443,11 @@ class EnhancedHookListener {
                 
                 if (compoundToken && compoundToken !== '0x0000000000000000000000000000000000000000') {
                     const tokenInfo = getTokenInfo(compoundToken);
+                    console.log(`🔍 Processing compound for token ${compoundToken.slice(0, 8)}...`, {
+                        tokenInfo: tokenInfo ? `${tokenInfo.symbol} (${tokenInfo.decimals} decimals)` : 'NOT FOUND',
+                        amount: compoundedAmount.toString()
+                    });
+                    
                     if (tokenInfo) {
                         tokenSymbol = tokenInfo.symbol;
                         if (!this.metrics.compoundedByToken[compoundToken]) {
@@ -434,8 +457,12 @@ class EnhancedHookListener {
                                 amount: 0n,
                                 decimals: tokenInfo.decimals
                             };
+                            console.log(`✅ Created new compoundedByToken entry for ${tokenInfo.symbol}`);
                         }
                         this.metrics.compoundedByToken[compoundToken].amount += compoundedAmount;
+                        console.log(`💰 Updated ${tokenInfo.symbol} compounded: ${this.metrics.compoundedByToken[compoundToken].amount.toString()}`);
+                    } else {
+                        console.warn(`❌ Compound token ${compoundToken} not found in token config`);
                     }
                 }
                 
@@ -613,6 +640,9 @@ class EnhancedHookListener {
     }
 
     private broadcastMetrics(): void {
+        // Calculate pending by token before broadcasting
+        this.calculatePendingByToken();
+        
         // Broadcast metrics silently
         this.metricsCallbacks.forEach(callback => {
             try {
@@ -621,6 +651,58 @@ class EnhancedHookListener {
                 console.error('Error in metrics callback:', error);
             }
         });
+    }
+
+    private calculatePendingByToken(): void {
+        this.metrics.pendingByToken = {};
+        
+        // Debug: Log token tracking
+        console.log('🔍 Calculating pending by token:');
+        console.log('Fees by token:', Object.keys(this.metrics.feesByToken).map(addr => {
+            const token = this.metrics.feesByToken[addr];
+            return `${token.symbol} (${addr.slice(0, 8)}...): ${token.amount.toString()}`;
+        }));
+        console.log('Compounded by token:', Object.keys(this.metrics.compoundedByToken).map(addr => {
+            const token = this.metrics.compoundedByToken[addr];
+            return `${token.symbol} (${addr.slice(0, 8)}...): ${token.amount.toString()}`;
+        }));
+        
+        // For each token that has fees collected, calculate pending
+        Object.keys(this.metrics.feesByToken).forEach(tokenAddress => {
+            const feesCollected = this.metrics.feesByToken[tokenAddress];
+            const compounded = this.metrics.compoundedByToken[tokenAddress];
+            
+            // Calculate pending: collected - compounded (ensure non-negative and logical)
+            let pendingAmount: bigint;
+            if (compounded && compounded.amount > feesCollected.amount) {
+                // Safety check: compounded can't be more than collected
+                console.warn(`🚨 ${feesCollected.symbol}: Compounded (${compounded.amount.toString()}) > Collected (${feesCollected.amount.toString()}). Setting pending to 0.`);
+                pendingAmount = 0n;
+            } else {
+                pendingAmount = compounded ? 
+                    feesCollected.amount - compounded.amount : 
+                    feesCollected.amount;
+            }
+            
+            console.log(`💰 ${feesCollected.symbol} pending calculation:`, {
+                collected: feesCollected.amount.toString(),
+                compounded: compounded?.amount.toString() || '0',
+                pending: pendingAmount.toString()
+            });
+            
+            // Always include tokens that have fees collected, even if pending is 0
+            this.metrics.pendingByToken[tokenAddress] = {
+                address: tokenAddress,
+                symbol: feesCollected.symbol,
+                amount: pendingAmount > 0n ? pendingAmount : 0n,
+                decimals: feesCollected.decimals
+            };
+        });
+        
+        console.log('📊 Final pending by token:', Object.keys(this.metrics.pendingByToken).map(addr => {
+            const token = this.metrics.pendingByToken[addr];
+            return `${token.symbol}: ${token.amount.toString()}`;
+        }));
     }
 
     // Dynamic pool discovery from fees events

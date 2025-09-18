@@ -105,6 +105,69 @@ const YieldMaximizerDashboard: React.FC<YieldMaximizerDashboardProps> = ({ hookL
         return compoundedTokens || "0.00";
     };
 
+    // Format pending fees by token - shows breakdown by token type
+    const formatPendingByToken = (metrics: DashboardMetrics | null): string => {
+        if (!metrics || !metrics.pendingByToken || Object.keys(metrics.pendingByToken).length === 0) {
+            // Fallback: calculate from total metrics and ensure non-negative
+            const totalPending = Math.max(0, (metrics ? Number(metrics.totalFeesCollected) - Number(metrics.totalCompounded) : 0));
+            return formatSmartTokenAmount(totalPending);
+        }
+
+        const pendingTokens = Object.values(metrics.pendingByToken)
+            .map(tokenPending => {
+                const amount = Number(tokenPending.amount) / Math.pow(10, tokenPending.decimals);
+                const formatted = amount < 0.000001 ? 
+                    amount.toExponential(3) : 
+                    amount.toFixed(6);
+                return `${formatted} ${tokenPending.symbol}`;
+            })
+            .join(' + ');
+
+        return pendingTokens || "0.00";
+    };
+
+    // Format pending fees by token for two-row display - returns array of token strings
+    const formatPendingByTokenRows = (metrics: DashboardMetrics | null): string[] => {
+        // Always try to use per-token data first
+        if (metrics && metrics.pendingByToken && Object.keys(metrics.pendingByToken).length > 0) {
+            const pendingTokens = Object.values(metrics.pendingByToken)
+                .map(tokenPending => {
+                    const amount = Number(tokenPending.amount) / Math.pow(10, tokenPending.decimals);
+                    const formatted = amount < 0.000001 ? 
+                        amount.toExponential(3) : 
+                        amount.toFixed(6);
+                    return `${formatted} ${tokenPending.symbol}`;
+                });
+            
+            return pendingTokens.length > 0 ? pendingTokens : ["0.00"];
+        }
+
+        // Fallback: try to use feesByToken and compoundedByToken to calculate manually
+        if (metrics && metrics.feesByToken && Object.keys(metrics.feesByToken).length > 0) {
+            const pendingTokens: string[] = [];
+            
+            Object.values(metrics.feesByToken).forEach(tokenFee => {
+                const compounded = metrics.compoundedByToken?.[tokenFee.address];
+                const pendingAmount = compounded ? 
+                    tokenFee.amount - compounded.amount : 
+                    tokenFee.amount;
+                
+                if (pendingAmount >= 0n) {
+                    const amount = Number(pendingAmount) / Math.pow(10, tokenFee.decimals);
+                    const formatted = amount < 0.000001 ? 
+                        amount.toExponential(3) : 
+                        amount.toFixed(6);
+                    pendingTokens.push(`${formatted} ${tokenFee.symbol}`);
+                }
+            });
+            
+            return pendingTokens.length > 0 ? pendingTokens : ["0.00"];
+        }
+
+        // Final fallback: show 0
+        return ["0.00"];
+    };
+
     // Smart token formatter - detects token based on amount and context
     const formatSmartTokenAmount = (amount: number, tokenAddress?: string) => {
         if (amount === 0) return "0.00";
@@ -612,13 +675,12 @@ const YieldMaximizerDashboard: React.FC<YieldMaximizerDashboardProps> = ({ hookL
                         <div className="text-sm text-gray-600">Of fees automatically compounded</div>
                     </div>
                     <div className="text-center">
-                        <div className="text-3xl font-bold text-purple-600 mb-2">
-                            {formatSmartTokenAmount(systemMetrics.totalFeesCollected - systemMetrics.totalCompounded)}
+                        <div className="text-lg font-bold text-purple-600 mb-2">
+                            {formatFeesByToken(metrics).split(' + ').map((tokenAmount, index) => (
+                                <div key={index}>{tokenAmount}</div>
+                            ))}
                         </div>
                         <div className="text-sm text-gray-600">pending compounding</div>
-                        <div className="text-xs text-gray-500 mt-1">
-                            (Total: {formatFeesByToken(metrics)})
-                        </div>
                     </div>
                 </div>
                 
