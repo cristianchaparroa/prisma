@@ -12,6 +12,7 @@ import {SwapParams, ModifyLiquidityParams} from "v4-core/types/PoolOperation.sol
 
 import {IPoolManager} from "v4-core/interfaces/IPoolManager.sol";
 import {Hooks} from "v4-core/libraries/Hooks.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 
 contract YieldMaximizerHook is BaseHook {
     using PoolIdLibrary for PoolKey;
@@ -136,17 +137,20 @@ contract YieldMaximizerHook is BaseHook {
         if (totalFeesGenerated == 0) {
             return (BaseHook.afterSwap.selector, 0);
         }
-
+        emit DebugEvent(string.concat("total fees generated: ", Strings.toString(totalFeesGenerated)));
         uint256 totalPoolLiquidity = getTotalPoolLiquidity(poolId);
 
+        emit DebugEvent(string.concat("total pool liquidity: ", Strings.toString(totalPoolLiquidity)));
         // Case 1: Active LPs exist in the pool.
         if (totalPoolLiquidity > 0) {
+            emit DebugEvent("_totalPoolLiquidity>0");
             address[] memory users = activeUsers[poolId];
             for (uint256 i = 0; i < users.length; i++) {
                 address user = users[i];
 
                 // Guard clause: Skip users without an active strategy or position.
                 if (!userStrategies[user].isActive || !userLiquidityPositions[user][poolId].isActive) {
+                    emit DebugEvent("_user-no-active-or-not-position");
                     continue;
                 }
 

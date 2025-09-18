@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import './App.css'
-import HookEventListener from "./providers/collectors/EventCollector";
 import Prisma from "./components/prisma.tsx";
+import HookListener from "./providers/collectors/HookEventListener.ts";
 
 function App() {
 
@@ -11,9 +11,11 @@ function App() {
       console.log('🧪 Starting EventCollector Test...')
 
       try {
-        const listener = new HookEventListener({
+        const listener = new HookListener({
           rpcUrl: 'http://127.0.0.1:8545',
-          hookAddress: '0x5c795C660c9DC55420CF2385B9930708Ceef1540'
+          hookAddress: '0x868c4b561869e1Fc1f8F0A50F3a12496C3C5D540',
+          poolManagerAddress: '0x000000000004444c5dc75cB358380D2e3dE08A90',
+          universalRouterAddress: '0x66a9893cc07d91d95644aedd05d03f95e1dba8af',
         });
 
         // Start listening

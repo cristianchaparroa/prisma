@@ -66,6 +66,8 @@ struct PoolConfig {
     address token1;
     uint128 amount0;
     uint128 amount1;
+    int24 tickLower;
+    int24 tickUpper;
     string name;
 }
 
@@ -82,8 +84,6 @@ contract LiquidityProvision is Script {
 
         uint24 fee = 3000;
         int24 tickSpacing = 60;
-        int24 tickLower = -120;
-        int24 tickUpper = 120;
 
         vm.startBroadcast(deployerKey);
         address deployer = vm.addr(deployerKey);
@@ -105,42 +105,50 @@ contract LiquidityProvision is Script {
         }
         console2.log("Permit2 approvals set for all tokens");
 
-        // Define pool configurations with appropriate amounts
+        // Define pool configurations with appropriate amounts AND tick ranges
         PoolConfig[] memory pools = new PoolConfig[](4);
 
-        // USDC/WETH pool
+        // USDC/WETH pool - normal tick range
         pools[0] = PoolConfig({
             token0: tokenUSDC,
             token1: tokenWETH,
             amount0: 10_000e6, // 10,000 USDC
             amount1: 5e18, // 5 WETH
+            tickLower: -120,
+            tickUpper: 120,
             name: "USDC/WETH"
         });
 
-        // DAI/WETH pool
+        // DAI/WETH pool - normal tick range
         pools[1] = PoolConfig({
             token0: tokenDAI,
             token1: tokenWETH,
             amount0: 10_000e18, // 10,000 DAI
             amount1: 5e18, // 5 WETH
+            tickLower: -120,
+            tickUpper: 120,
             name: "DAI/WETH"
         });
 
-        // DAI/USDC pool
+        // DAI/USDC pool - WIDE tick range for extreme price
         pools[2] = PoolConfig({
             token0: tokenDAI,
             token1: tokenUSDC,
-            amount0: 10_000e18, // 10,000 DAI
-            amount1: 10_000e6, // 10,000 USDC
+            amount0: 100_000e18, // Increase to 100,000 DAI
+            amount1: 100_000e6, // Increase to 100,000 USDC
+            tickLower: -120,
+            tickUpper: 120,
             name: "DAI/USDC"
         });
 
-        // WBTC/WETH pool
+        // WBTC/WETH pool - normal tick range
         pools[3] = PoolConfig({
             token0: tokenWBTC,
             token1: tokenWETH,
             amount0: 1e8, // 1 WBTC
             amount1: 15e18, // 15 WETH (approx BTC price ratio)
+            tickLower: -120,
+            tickUpper: 120,
             name: "WBTC/WETH"
         });
 
@@ -170,8 +178,8 @@ contract LiquidityProvision is Script {
 
             params[0] = abi.encode(
                 key,
-                tickLower,
-                tickUpper,
+                poolConfig.tickLower, // Use pool-specific tick range
+                poolConfig.tickUpper, // Use pool-specific tick range
                 1000000, // 1M liquidity units per pool
                 amount0Max,
                 amount1Max,

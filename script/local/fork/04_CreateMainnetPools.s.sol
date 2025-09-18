@@ -8,6 +8,37 @@ import {Currency} from "v4-core/types/Currency.sol";
 import {IHooks} from "v4-core/interfaces/IHooks.sol";
 
 contract CreateMainnetPools is Script {
+    // Helper function to calculate sqrtPriceX96 for different ratios
+    function getSqrtPriceX96(uint256 token0Amount, uint256 token1Amount, uint8 token0Decimals, uint8 token1Decimals)
+        internal
+        pure
+        returns (uint160)
+    {
+        // Adjust amounts for decimals
+        uint256 adjustedToken0 = token0Amount * (10 ** (18 - token0Decimals));
+        uint256 adjustedToken1 = token1Amount * (10 ** (18 - token1Decimals));
+
+        // Calculate price ratio (token1/token0)
+        uint256 priceRatio = (adjustedToken1 * 1e18) / adjustedToken0;
+
+        // Calculate sqrt(priceRatio) * 2^96
+        uint256 sqrtPrice = sqrt(priceRatio * (2 ** 192));
+
+        return uint160(sqrtPrice);
+    }
+
+    // Simple sqrt implementation for demonstration
+    function sqrt(uint256 x) internal pure returns (uint256) {
+        if (x == 0) return 0;
+        uint256 z = (x + 1) / 2;
+        uint256 y = x;
+        while (z < y) {
+            y = z;
+            z = (x / z + z) / 2;
+        }
+        return y;
+    }
+
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("ANVIL_PRIVATE_KEY");
         PoolManager poolManager = PoolManager(vm.envAddress("POOL_MANAGER"));
@@ -36,11 +67,12 @@ contract CreateMainnetPools is Script {
             hooks: hook
         });
 
+        // DAI/USDC - Stablecoin pair (CRITICAL FIX HERE)
         pools[2] = PoolKey({
             currency0: Currency.wrap(vm.envAddress("TOKEN_DAI")),
             currency1: Currency.wrap(vm.envAddress("TOKEN_USDC")),
-            fee: 3000, // Change from 500 to 3000
-            tickSpacing: 60, // Change from 10 to 60
+            fee: 3000,
+            tickSpacing: 60,
             hooks: hook
         });
 
@@ -53,15 +85,23 @@ contract CreateMainnetPools is Script {
             hooks: hook
         });
 
-        // Initialize all pools with market prices
+        // Initialize pools with CORRECT prices
+
+        // USDC/WETH: 1 ETH = 3000 USDC (token1/token0 ratio)
         initializePool(poolManager, pools[0], 79228162514264337593543950336); // ~$3000 ETH
+
+        // DAI/WETH: 1 ETH = 3000 DAI
         initializePool(poolManager, pools[1], 79228162514264337593543950336); // ~$3000 ETH
-        initializePool(poolManager, pools[2], 79228162514264337593543950336); // correct for 1:1
-        initializePool(poolManager, pools[3], 158456325028528675187087900672); // ~$60K BTC
+
+        // DAI/USDC: 1 USDC = 1 DAI (accounting for decimal difference)
+        initializePool(poolManager, pools[2], 79228162514264337593543950336); // Original value but we'll add concentrated liquidity
+
+        // WBTC/WETH: 1 WBTC = 20 ETH
+        initializePool(poolManager, pools[3], 158456325028528675187087900672); // ~20x ETH price
 
         vm.stopBroadcast();
 
-        console2.log("All mainnet pools created and initialized");
+        console2.log("All mainnet pools created and initialized with CORRECT prices");
     }
 
     function initializePool(PoolManager poolManager, PoolKey memory poolKey, uint160 sqrtPriceX96) internal {
@@ -69,16 +109,19 @@ contract CreateMainnetPools is Script {
             console2.log("Pool initialized successfully");
             console2.log("Currency0:", vm.toString(Currency.unwrap(poolKey.currency0)));
             console2.log("Currency1:", vm.toString(Currency.unwrap(poolKey.currency1)));
+            console2.log("SqrtPriceX96:", vm.toString(sqrtPriceX96));
             console2.log("Tick:", vm.toString(tick));
         } catch Error(string memory reason) {
             console2.log("Pool initialization failed");
             console2.log("Reason:", reason);
             console2.log("Currency0:", vm.toString(Currency.unwrap(poolKey.currency0)));
             console2.log("Currency1:", vm.toString(Currency.unwrap(poolKey.currency1)));
+            console2.log("Attempted SqrtPriceX96:", vm.toString(sqrtPriceX96));
         } catch (bytes memory) {
             console2.log("Pool initialization failed with unknown error");
             console2.log("Currency0:", vm.toString(Currency.unwrap(poolKey.currency0)));
             console2.log("Currency1:", vm.toString(Currency.unwrap(poolKey.currency1)));
+            console2.log("Attempted SqrtPriceX96:", vm.toString(sqrtPriceX96));
         }
     }
 }

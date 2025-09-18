@@ -63,24 +63,20 @@ fi
 LATEST_BLOCK=$(cast block-number --rpc-url http://localhost:8545)
 print_success "Infrastructure verified at block: $LATEST_BLOCK"
 
-print_header "PHASE 4: SIMULATION EXECUTION"
+print_header "SIMULATION EXECUTION"
 
-print_step "Step 4.1: Running user simulation..."
-./scripts/local/08-simulate-users.sh
+print_step "Step 4.1: Enabling user strategies ..."
+forge script script/local/fork/08_EnableStrategies.s.sol \
+    --rpc-url $ANVIL_RPC_URL --skip-simulation \
+    --broadcast \
+    --legacy
 
-if [ $? -eq 0 ]; then
-    print_success "User simulation completed"
-else
-    print_warning "User simulation had issues (check user_simulation.log)"
-fi
+
+print_step "Step 4.1: Validating strategies ..."
+./scripts/validations/05_validate-strategies.sh
 
 print_step "Step 4.2: Running trading simulation..."
-forge script script/local/simulation/09_Simulation.s.sol:Simulation \
-    --fork-url $ANVIL_RPC_URL \
-    --private-key $ANVIL_PRIVATE_KEY \
-    --broadcast \
-    --skip-simulation \
-    -vvv --gas-estimate-multiplier 200
+forge script script/local/simulation/Trading.s.sol --fork-url $ANVIL_RPC_URL --broadcast --skip-simulation -- --vvvv
 
 if [ $? -eq 0 ]; then
     print_success "Trading simulation completed"
@@ -93,12 +89,4 @@ DURATION=$((END_TIME - START_TIME))
 
 print_header "🎉 SIMULATION EXECUTION COMPLETED!"
 print_success "Total execution time: ${DURATION}s"
-print_success "Infrastructure remains running for further testing"
-print_success "Use 'pkill -f anvil' to stop the infrastructure when done"
 
-echo ""
-echo "=== NEXT STEPS ==="
-echo "1. Check logs for hook execution details"
-echo "2. Run analysis scripts to verify results"
-echo "3. View dashboard for performance metrics"
-echo ""
