@@ -2,7 +2,6 @@
 pragma solidity 0.8.26;
 
 import {BaseHook} from "v4-periphery/src/utils/BaseHook.sol";
-import {ERC1155} from "solmate/src/tokens/ERC1155.sol";
 
 import {Currency} from "v4-core/types/Currency.sol";
 import {PoolKey} from "v4-core/types/PoolKey.sol";
@@ -12,7 +11,7 @@ import {SwapParams, ModifyLiquidityParams} from "v4-core/types/PoolOperation.sol
 
 import {IPoolManager} from "v4-core/interfaces/IPoolManager.sol";
 import {Hooks} from "v4-core/libraries/Hooks.sol";
-import "@openzeppelin/contracts/utils/Strings.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 contract YieldMaximizerHook is BaseHook {
     using PoolIdLibrary for PoolKey;
@@ -29,7 +28,7 @@ contract YieldMaximizerHook is BaseHook {
 
     struct PoolStrategy {
         uint256 totalUsers;
-        uint256 totalTVL;
+        uint256 totalTvl;
         uint256 lastCompoundTime;
         bool isActive;
     }
@@ -96,7 +95,7 @@ contract YieldMaximizerHook is BaseHook {
 
     event PerformanceSnapshot(
         PoolId indexed poolId,
-        uint256 totalTVL,
+        uint256 totalTvl,
         uint256 totalUsers,
         uint256 totalFeesCollected,
         uint256 totalCompounded,
@@ -143,7 +142,7 @@ contract YieldMaximizerHook is BaseHook {
     // Yield optimization events
     event YieldOpportunityDetected(
         PoolId indexed poolId,
-        uint256 estimatedAPY,
+        uint256 estimatedApy,
         uint256 optimalCompoundFrequency,
         uint256 timestamp
     );
@@ -161,7 +160,7 @@ contract YieldMaximizerHook is BaseHook {
     event SystemHealthMetrics(
         uint256 totalActiveUsers,
         uint256 totalActivePools,
-        uint256 systemTVL,
+        uint256 systemTvl,
         uint256 averageGasPrice,
         uint256 pendingCompounds,
         uint256 timestamp
@@ -313,9 +312,9 @@ contract YieldMaximizerHook is BaseHook {
         address sender,
         PoolKey calldata key,
         ModifyLiquidityParams calldata modifyParams,
-        BalanceDelta delta,
-        BalanceDelta,
-        bytes calldata hookData
+        BalanceDelta, /* delta */
+        BalanceDelta, /* feesAccrued */
+        bytes calldata /* hookData */
     ) internal override returns (bytes4, BalanceDelta) {
         PoolId poolId = key.toId();
 
@@ -336,7 +335,7 @@ contract YieldMaximizerHook is BaseHook {
             userLiquidityPositions[sender][poolId].lastUpdateTime = block.timestamp;
             userLiquidityPositions[sender][poolId].isActive = true;
 
-            poolStrategies[poolId].totalTVL += liquidityAmount;
+            poolStrategies[poolId].totalTvl += liquidityAmount;
 
             // Add user to active users if they have strategy and aren't already added
             if (hasActiveStrategy(sender) && !_isUserInPool(sender, poolId)) {
@@ -348,7 +347,7 @@ contract YieldMaximizerHook is BaseHook {
                 sender,
                 poolId,
                 liquidityAmount,
-                poolStrategies[poolId].totalTVL,
+                poolStrategies[poolId].totalTvl,
                 block.timestamp
             );
 
@@ -360,13 +359,13 @@ contract YieldMaximizerHook is BaseHook {
     }
 
     function _afterRemoveLiquidity(
-        address sender,
-        PoolKey calldata key,
+        address, /* sender */
+        PoolKey calldata, /* key */
         ModifyLiquidityParams calldata, /* modifyParams */
-        BalanceDelta delta,
+        BalanceDelta, /* delta */
         BalanceDelta, /* feesAccrued */
-        bytes calldata hookData
-    ) internal override returns (bytes4, BalanceDelta) {
+        bytes calldata /* hookData */
+    ) internal pure override returns (bytes4, BalanceDelta) {
         return (BaseHook.afterRemoveLiquidity.selector, BalanceDelta.wrap(0));
     }
 
@@ -601,7 +600,7 @@ contract YieldMaximizerHook is BaseHook {
         _emitTokenSpecificCompoundEvents(user, poolId, amount);
     }
 
-    function calculateFeesFromSwapWithToken(PoolKey memory key, SwapParams memory params, BalanceDelta delta) internal pure returns (uint256 feeAmount, address feeToken, bool isToken0) {
+    function calculateFeesFromSwapWithToken(PoolKey memory key, SwapParams memory, /* params */ BalanceDelta delta) internal pure returns (uint256 feeAmount, address feeToken, bool isToken0) {
         // Determine swap direction and fee token
         int256 amount0 = delta.amount0();
         int256 amount1 = delta.amount1();
@@ -764,7 +763,7 @@ contract YieldMaximizerHook is BaseHook {
 
         emit PerformanceSnapshot(
             poolId,
-            pool.totalTVL,
+            pool.totalTvl,
             pool.totalUsers,
             totalFeesCollected,
             totalCompounded,
@@ -794,7 +793,7 @@ contract YieldMaximizerHook is BaseHook {
         emit SystemHealthMetrics(
             _getTotalActiveUsers(),
             _getTotalActivePools(),
-            _getSystemTVL(),
+            _getSystemTvl(),
             tx.gasprice,
             _getTotalPendingCompounds(),
             block.timestamp
@@ -824,23 +823,23 @@ contract YieldMaximizerHook is BaseHook {
         return totalCompounded;
     }
 
-    function _getTotalActiveUsers() internal view returns (uint256) {
+    function _getTotalActiveUsers() internal pure returns (uint256) {
         // Implementation depends on your tracking mechanism
         // You might need to maintain a global counter
         return 0; // Placeholder
     }
 
-    function _getTotalActivePools() internal view returns (uint256) {
+    function _getTotalActivePools() internal pure returns (uint256) {
         // Implementation depends on your tracking mechanism
         return 0; // Placeholder
     }
 
-    function _getSystemTVL() internal view returns (uint256) {
+    function _getSystemTvl() internal pure returns (uint256) {
         // Calculate total value locked across all pools
         return 0; // Placeholder
     }
 
-    function _getTotalPendingCompounds() internal view returns (uint256) {
+    function _getTotalPendingCompounds() internal pure returns (uint256) {
         // Calculate total pending compounds across all pools
         return 0; // Placeholder
     }

@@ -50,14 +50,14 @@ contract Trading is Script {
         // Env vars
         address universalRouterAddr = vm.envAddress("UNIVERSAL_ROUTER");
         address permit2Addr = vm.envAddress("PERMIT2");
-        address tokenUSDC = vm.envAddress("TOKEN_USDC");
-        address tokenDAI = vm.envAddress("TOKEN_DAI");
+        address tokenUsdc = vm.envAddress("TOKEN_USDC");
+        address tokenDai = vm.envAddress("TOKEN_DAI");
         address hookAddr = vm.envAddress("HOOK_ADDRESS");
         address account = vm.envAddress("ACCOUNT_1_ADDRESS");
         uint256 privateKey = vm.envUint("ACCOUNT_1_PRIVATE_KEY");
 
         // Validate that tokens are different
-        require(tokenUSDC != tokenDAI, "USDC and DAI cannot be the same address");
+        require(tokenUsdc != tokenDai, "USDC and DAI cannot be the same address");
 
         vm.startBroadcast(privateKey);
 
@@ -65,24 +65,24 @@ contract Trading is Script {
         uint256 maxAmount = type(uint256).max;
 
         // Approve USDC
-        if (IERC20(tokenUSDC).allowance(account, permit2Addr) < maxAmount / 2) {
-            IERC20(tokenUSDC).approve(permit2Addr, maxAmount);
+        if (IERC20(tokenUsdc).allowance(account, permit2Addr) < maxAmount / 2) {
+            IERC20(tokenUsdc).approve(permit2Addr, maxAmount);
         }
 
         // Approve DAI
-        if (IERC20(tokenDAI).allowance(account, permit2Addr) < maxAmount / 2) {
-            IERC20(tokenDAI).approve(permit2Addr, maxAmount);
+        if (IERC20(tokenDai).allowance(account, permit2Addr) < maxAmount / 2) {
+            IERC20(tokenDai).approve(permit2Addr, maxAmount);
         }
 
         // Set allowances through Permit2 for both tokens
         uint48 deadline = uint48(block.timestamp + 7200); // 2 hours from now
 
-        IAllowanceTransfer(permit2Addr).approve(tokenUSDC, universalRouterAddr, type(uint160).max, deadline);
+        IAllowanceTransfer(permit2Addr).approve(tokenUsdc, universalRouterAddr, type(uint160).max, deadline);
 
-        IAllowanceTransfer(permit2Addr).approve(tokenDAI, universalRouterAddr, type(uint160).max, deadline);
+        IAllowanceTransfer(permit2Addr).approve(tokenDai, universalRouterAddr, type(uint160).max, deadline);
 
         // PoolKey - ensure proper ordering
-        (address token0, address token1) = tokenUSDC < tokenDAI ? (tokenUSDC, tokenDAI) : (tokenDAI, tokenUSDC);
+        (address token0, address token1) = tokenUsdc < tokenDai ? (tokenUsdc, tokenDai) : (tokenDai, tokenUsdc);
 
         PoolKey memory poolKey = PoolKey({
             currency0: Currency.wrap(token0),
@@ -94,8 +94,8 @@ contract Trading is Script {
 
         console2.log("Pool currency0:", Currency.unwrap(poolKey.currency0));
         console2.log("Pool currency1:", Currency.unwrap(poolKey.currency1));
-        console2.log("USDC address:", tokenUSDC);
-        console2.log("DAI address:", tokenDAI);
+        console2.log("USDC address:", tokenUsdc);
+        console2.log("DAI address:", tokenDai);
 
         // Universal Router command (always the same)
         bytes memory commands = abi.encodePacked(uint8(Commands.V4_SWAP));
@@ -103,7 +103,7 @@ contract Trading is Script {
         // Run a few test swaps to verify pool is functional
         uint256 successfulSwaps = 0;
 
-        for (uint256 i = 0; i < 100; i++) {
+        for (uint256 i = 0; i < 1000; i++) {
             // Strict alternating pattern
             bool zeroForOne = (i % 2 == 0);
 
@@ -114,7 +114,7 @@ contract Trading is Script {
             if (!zeroForOne) {
                 // If swapping currency1 -> currency0, keep USDC amounts (6 decimals)
                 // But if currency1 is DAI, we need to convert
-                if (Currency.unwrap(poolKey.currency1) != tokenUSDC) {
+                if (Currency.unwrap(poolKey.currency1) != tokenUsdc) {
                     amountIn = amountIn * 1e12; // Convert from 6 to 18 decimals for DAI
                 }
             }

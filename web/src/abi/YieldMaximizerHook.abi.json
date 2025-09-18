@@ -1181,7 +1181,7 @@
             "internalType": "uint256"
           },
           {
-            "name": "totalTVL",
+            "name": "totalTvl",
             "type": "uint256",
             "internalType": "uint256"
           },
@@ -1427,7 +1427,7 @@
         "internalType": "uint256"
       },
       {
-        "name": "totalTVL",
+        "name": "totalTvl",
         "type": "uint256",
         "internalType": "uint256"
       },
@@ -2007,7 +2007,7 @@
         "internalType": "PoolId"
       },
       {
-        "name": "totalTVL",
+        "name": "totalTvl",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
@@ -2205,7 +2205,7 @@
         "internalType": "uint256"
       },
       {
-        "name": "systemTVL",
+        "name": "systemTvl",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
@@ -2291,7 +2291,7 @@
         "internalType": "PoolId"
       },
       {
-        "name": "estimatedAPY",
+        "name": "estimatedApy",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"

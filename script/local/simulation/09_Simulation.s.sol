@@ -53,8 +53,8 @@ contract Simulation is Script {
     function run() external {
         address universalRouterAddr = vm.envAddress("UNIVERSAL_ROUTER");
         address permit2Addr = vm.envAddress("PERMIT2");
-        address tokenUSDC = vm.envAddress("TOKEN_USDC");
-        address tokenDAI = vm.envAddress("TOKEN_DAI");
+        address tokenUsdc = vm.envAddress("TOKEN_USDC");
+        address tokenDai = vm.envAddress("TOKEN_DAI");
         address hookAddr = vm.envAddress("HOOK_ADDRESS");
 
         console2.log("Production V4 Swaps using UniversalRouter");
@@ -66,8 +66,8 @@ contract Simulation is Script {
         swaps[0] = SwapConfig({
             account: vm.envAddress("ACCOUNT_1_ADDRESS"),
             privateKey: vm.envUint("ACCOUNT_1_PRIVATE_KEY"),
-            tokenIn: tokenUSDC,
-            tokenOut: tokenDAI,
+            tokenIn: tokenUsdc,
+            tokenOut: tokenDai,
             amountIn: 500e6,
             description: "Account 1: USDC -> DAI"
         });
@@ -75,8 +75,8 @@ contract Simulation is Script {
         swaps[1] = SwapConfig({
             account: vm.envAddress("ACCOUNT_2_ADDRESS"),
             privateKey: vm.envUint("ACCOUNT_2_PRIVATE_KEY"),
-            tokenIn: tokenDAI,
-            tokenOut: tokenUSDC,
+            tokenIn: tokenDai,
+            tokenOut: tokenUsdc,
             amountIn: 300e18,
             description: "Account 2: DAI -> USDC"
         });
@@ -84,8 +84,8 @@ contract Simulation is Script {
         swaps[2] = SwapConfig({
             account: vm.envAddress("ACCOUNT_3_ADDRESS"),
             privateKey: vm.envUint("ACCOUNT_3_PRIVATE_KEY"),
-            tokenIn: tokenUSDC,
-            tokenOut: tokenDAI,
+            tokenIn: tokenUsdc,
+            tokenOut: tokenDai,
             amountIn: 750e6,
             description: "Account 3: USDC -> DAI"
         });
@@ -93,8 +93,8 @@ contract Simulation is Script {
         swaps[3] = SwapConfig({
             account: vm.envAddress("ACCOUNT_4_ADDRESS"),
             privateKey: vm.envUint("ACCOUNT_4_PRIVATE_KEY"),
-            tokenIn: tokenDAI,
-            tokenOut: tokenUSDC,
+            tokenIn: tokenDai,
+            tokenOut: tokenUsdc,
             amountIn: 400e18,
             description: "Account 4: DAI -> USDC"
         });

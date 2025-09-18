@@ -2,7 +2,6 @@
 pragma solidity ^0.8.26;
 
 import {Script, console2} from "forge-std/Script.sol";
-import {PoolManager} from "v4-core/PoolManager.sol";
 import {PoolKey} from "v4-core/types/PoolKey.sol";
 import {PoolId, PoolIdLibrary} from "v4-core/types/PoolId.sol";
 import {Currency} from "v4-core/types/Currency.sol";
@@ -24,7 +23,7 @@ interface IYieldMaximizerHook {
     function getPoolStrategy(PoolId poolId)
         external
         view
-        returns (uint256 totalUsers, uint256 totalTVL, uint256 lastCompoundTime, bool isActive);
+        returns (uint256 totalUsers, uint256 totalTvl, uint256 lastCompoundTime, bool isActive);
 }
 
 contract EnableStrategiesFixed is Script {
@@ -125,6 +124,11 @@ contract EnableStrategiesFixed is Script {
                     uint256 gasThreshold,
                     uint8 riskLevel
                 ) = hook.getUserStrategy(user);
+                
+                // Suppress unused variable warnings
+                totalDeposited;
+                totalCompounded;
+                lastCompoundTime;
 
                 if (isActive && gasThreshold == config.gasThreshold && riskLevel == config.riskLevel) {
                     console2.log("Strategy verified");
@@ -146,9 +150,9 @@ contract EnableStrategiesFixed is Script {
         for (uint256 i = 0; i < testAccounts.length; i++) {
             try hook.getUserStrategy(testAccounts[i]) returns (
                 bool isActive,
-                uint256 totalDeposited,
-                uint256 totalCompounded,
-                uint256 lastCompoundTime,
+                uint256,
+                uint256,
+                uint256,
                 uint256 gasThreshold,
                 uint8 riskLevel
             ) {
