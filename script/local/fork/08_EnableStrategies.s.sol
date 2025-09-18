@@ -124,7 +124,7 @@ contract EnableStrategiesFixed is Script {
                     uint256 gasThreshold,
                     uint8 riskLevel
                 ) = hook.getUserStrategy(user);
-                
+
                 // Suppress unused variable warnings
                 totalDeposited;
                 totalCompounded;
@@ -149,12 +149,7 @@ contract EnableStrategiesFixed is Script {
         uint256 totalActive = 0;
         for (uint256 i = 0; i < testAccounts.length; i++) {
             try hook.getUserStrategy(testAccounts[i]) returns (
-                bool isActive,
-                uint256,
-                uint256,
-                uint256,
-                uint256 gasThreshold,
-                uint8 riskLevel
+                bool isActive, uint256, uint256, uint256, uint256 gasThreshold, uint8 riskLevel
             ) {
                 if (isActive) {
                     totalActive++;
