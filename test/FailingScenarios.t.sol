@@ -184,19 +184,19 @@ contract FailingScenariosTest is Test, SimpleDeployers {
 
     // Test that inactive users don't get added to active list
     // TODO: this could be enable later when I fix the user strategies
-//    function test_addLiquidity_withoutStrategy_notAddedToActive() public {
-//        // User adds liquidity without activating strategy
-//        _addLiquidityForUser(alice, 1000000000000000000);
-//
-//        // Verify user is NOT in active users list
-//        address[] memory activeUsers = hook.getActiveUsers(poolId);
-//        assertEq(activeUsers.length, 0, "Should have no active users without strategy activation");
-//
-//        // User should still have liquidity position but not be tracked as active
-//        YieldMaximizerHook.UserLiquidityPosition memory position = hook.getUserLiquidityPosition(alice, poolId);
-//        assertGt(position.liquidityAmount, 0, "Should have liquidity position");
-//        assertTrue(position.isActive, "Position should be active even without strategy");
-//    }
+    //    function test_addLiquidity_withoutStrategy_notAddedToActive() public {
+    //        // User adds liquidity without activating strategy
+    //        _addLiquidityForUser(alice, 1000000000000000000);
+    //
+    //        // Verify user is NOT in active users list
+    //        address[] memory activeUsers = hook.getActiveUsers(poolId);
+    //        assertEq(activeUsers.length, 0, "Should have no active users without strategy activation");
+    //
+    //        // User should still have liquidity position but not be tracked as active
+    //        YieldMaximizerHook.UserLiquidityPosition memory position = hook.getUserLiquidityPosition(alice, poolId);
+    //        assertGt(position.liquidityAmount, 0, "Should have liquidity position");
+    //        assertTrue(position.isActive, "Position should be active even without strategy");
+    //    }
 
     // Test minimum compound amount enforcement
     function test_shouldCompound_belowMinimum_shouldReturnFalse() public {

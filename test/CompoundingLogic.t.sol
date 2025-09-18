@@ -103,10 +103,10 @@ contract CompoundingLogicTest is Test, SimpleDeployers {
 
         // Note: Gas price checks are commented out in the current shouldCompound implementation
         // This test verifies that gas thresholds don't affect compounding decisions
-        
+
         console.log("Gas price checks are bypassed for testing - compounds regardless of gas price");
         console.log("Users still have gas thresholds configured but they're not enforced");
-        
+
         // Verify users still have their gas thresholds set (for future use)
         (,,,, uint256 aliceGas,) = hook.userStrategies(alice);
         (,,,, uint256 bobGas,) = hook.userStrategies(bob);

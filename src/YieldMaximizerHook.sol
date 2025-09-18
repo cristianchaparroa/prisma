@@ -44,7 +44,6 @@ contract YieldMaximizerHook is BaseHook {
         address token1; // Pool's token1 address
     }
 
-
     // This tracks each user's liquidity position in a pool
     struct UserLiquidityPosition {
         uint256 liquidityAmount; // Amount of liquidity provided
@@ -113,38 +112,27 @@ contract YieldMaximizerHook is BaseHook {
     );
 
     // Gas optimization events
-    event GasOptimizationMetrics(
+    event GasOptimizationMetrics( // batch gas vs individual gas
         PoolId indexed poolId,
         uint256 batchSize,
         uint256 totalGasSaved,
         uint256 averageGasPerUser,
-        uint256 gasEfficiencyRatio, // batch gas vs individual gas
+        uint256 gasEfficiencyRatio,
         uint256 timestamp
     );
 
     // Liquidity events (missing from your current implementation)
     event LiquidityAdded(
-        address indexed user,
-        PoolId indexed poolId,
-        uint256 amount,
-        uint256 newTotalLiquidity,
-        uint256 timestamp
+        address indexed user, PoolId indexed poolId, uint256 amount, uint256 newTotalLiquidity, uint256 timestamp
     );
 
     event LiquidityRemoved(
-        address indexed user,
-        PoolId indexed poolId,
-        uint256 amount,
-        uint256 newTotalLiquidity,
-        uint256 timestamp
+        address indexed user, PoolId indexed poolId, uint256 amount, uint256 newTotalLiquidity, uint256 timestamp
     );
 
     // Yield optimization events
     event YieldOpportunityDetected(
-        PoolId indexed poolId,
-        uint256 estimatedApy,
-        uint256 optimalCompoundFrequency,
-        uint256 timestamp
+        PoolId indexed poolId, uint256 estimatedApy, uint256 optimalCompoundFrequency, uint256 timestamp
     );
 
     event AutoCompoundOptimization(
@@ -220,11 +208,13 @@ contract YieldMaximizerHook is BaseHook {
         return BaseHook.afterInitialize.selector;
     }
 
-    function _afterSwap(address sender, PoolKey calldata key, SwapParams calldata params, BalanceDelta delta, bytes calldata)
-    internal
-    override
-    returns (bytes4, int128)
-    {
+    function _afterSwap(
+        address sender,
+        PoolKey calldata key,
+        SwapParams calldata params,
+        BalanceDelta delta,
+        bytes calldata
+    ) internal override returns (bytes4, int128) {
         emit DebugEvent("_afterSwap");
         PoolId poolId = key.toId();
 
@@ -238,17 +228,33 @@ contract YieldMaximizerHook is BaseHook {
         emit DebugEvent(string.concat("total fees generated: ", Strings.toString(feeAmount)));
 
         // Only give fees to the swapper if they have an active strategy
-//        bool isActiveStrategy = userStrategies[sender].isActive;
-//
-//        if (isActiveStrategy) {
-            _collectFeesForUserWithToken(sender, poolId, feeAmount, feeToken, isToken0, Currency.unwrap(key.currency0), Currency.unwrap(key.currency1));
-//        }
+        //        bool isActiveStrategy = userStrategies[sender].isActive;
+        //
+        //        if (isActiveStrategy) {
+        _collectFeesForUserWithToken(
+            sender,
+            poolId,
+            feeAmount,
+            feeToken,
+            isToken0,
+            Currency.unwrap(key.currency0),
+            Currency.unwrap(key.currency1)
+        );
+        //        }
 
         return (BaseHook.afterSwap.selector, 0);
     }
 
     // Enhanced fee collection with token information
-    function _collectFeesForUserWithToken(address user, PoolId poolId, uint256 amount, address token, bool isToken0, address token0, address token1) internal {
+    function _collectFeesForUserWithToken(
+        address user,
+        PoolId poolId,
+        uint256 amount,
+        address token,
+        bool isToken0,
+        address token0,
+        address token1
+    ) internal {
         emit DebugEvent("_collectFeesForUserWithToken");
 
         // Initialize default strategy for user if not exists (for testing)
@@ -321,7 +327,11 @@ contract YieldMaximizerHook is BaseHook {
         // Track liquidity changes (can be positive or negative)
         int256 liquidityDelta = modifyParams.liquidityDelta;
 
-        emit DebugEvent(string.concat("liquidityDelta: ", Strings.toString(uint256(liquidityDelta < 0 ? -liquidityDelta : liquidityDelta))));
+        emit DebugEvent(
+            string.concat(
+                "liquidityDelta: ", Strings.toString(uint256(liquidityDelta < 0 ? -liquidityDelta : liquidityDelta))
+            )
+        );
 
         if (liquidityDelta == 0) {
             return (BaseHook.afterAddLiquidity.selector, BalanceDelta.wrap(0));
@@ -343,13 +353,7 @@ contract YieldMaximizerHook is BaseHook {
                 poolStrategies[poolId].totalUsers++;
             }
 
-            emit LiquidityAdded(
-                sender,
-                poolId,
-                liquidityAmount,
-                poolStrategies[poolId].totalTvl,
-                block.timestamp
-            );
+            emit LiquidityAdded(sender, poolId, liquidityAmount, poolStrategies[poolId].totalTvl, block.timestamp);
 
             // Emit user performance update
             _emitUserPerformanceUpdate(sender, poolId);
@@ -445,7 +449,9 @@ contract YieldMaximizerHook is BaseHook {
         // if (tx.gasprice > strategy.gasThreshold) return false;
 
         // Check if enough time passed (minimum 1 minute between compounds)
-        if (strategy.lastCompoundTime > 0 && block.timestamp < strategy.lastCompoundTime + MIN_ACTION_INTERVAL) return false;
+        if (strategy.lastCompoundTime > 0 && block.timestamp < strategy.lastCompoundTime + MIN_ACTION_INTERVAL) {
+            return false;
+        }
 
         return true;
     }
@@ -557,12 +563,7 @@ contract YieldMaximizerHook is BaseHook {
 
         // Emit enhanced metrics
         emit GasOptimizationMetrics(
-            poolId,
-            batch.length,
-            actualGasSaved,
-            averageGasPerUser,
-            gasEfficiencyRatio,
-            block.timestamp
+            poolId, batch.length, actualGasSaved, averageGasPerUser, gasEfficiencyRatio, block.timestamp
         );
 
         emit BatchExecuted(poolId, batch.length, totalAmount, gasUsed);
@@ -600,7 +601,11 @@ contract YieldMaximizerHook is BaseHook {
         _emitTokenSpecificCompoundEvents(user, poolId, amount);
     }
 
-    function calculateFeesFromSwapWithToken(PoolKey memory key, SwapParams memory, /* params */ BalanceDelta delta) internal pure returns (uint256 feeAmount, address feeToken, bool isToken0) {
+    function calculateFeesFromSwapWithToken(PoolKey memory key, SwapParams memory, /* params */ BalanceDelta delta)
+        internal
+        pure
+        returns (uint256 feeAmount, address feeToken, bool isToken0)
+    {
         // Determine swap direction and fee token
         int256 amount0 = delta.amount0();
         int256 amount1 = delta.amount1();
@@ -753,7 +758,6 @@ contract YieldMaximizerHook is BaseHook {
         return activeUsers[poolId];
     }
 
-
     // Add these functions to emit performance snapshots periodically
     function emitPerformanceSnapshot(PoolId poolId) external {
         PoolStrategy memory pool = poolStrategies[poolId];
@@ -762,12 +766,7 @@ contract YieldMaximizerHook is BaseHook {
         uint256 totalCompounded = _calculateTotalCompounded(poolId);
 
         emit PerformanceSnapshot(
-            poolId,
-            pool.totalTvl,
-            pool.totalUsers,
-            totalFeesCollected,
-            totalCompounded,
-            block.timestamp
+            poolId, pool.totalTvl, pool.totalUsers, totalFeesCollected, totalCompounded, block.timestamp
         );
     }
 
@@ -775,8 +774,7 @@ contract YieldMaximizerHook is BaseHook {
         UserStrategy memory strategy = userStrategies[user];
         FeeAccounting memory fees = userFees[user][poolId];
 
-        uint256 netYield = fees.totalFeesEarned > 0 ?
-            (strategy.totalCompounded * 10000) / fees.totalFeesEarned : 0;
+        uint256 netYield = fees.totalFeesEarned > 0 ? (strategy.totalCompounded * 10000) / fees.totalFeesEarned : 0;
 
         emit UserPerformanceUpdate(
             user,
@@ -848,8 +846,7 @@ contract YieldMaximizerHook is BaseHook {
         UserStrategy memory strategy = userStrategies[user];
         FeeAccounting memory fees = userFees[user][poolId];
 
-        uint256 netYield = fees.totalFeesEarned > 0 ?
-            (strategy.totalCompounded * 10000) / fees.totalFeesEarned : 0;
+        uint256 netYield = fees.totalFeesEarned > 0 ? (strategy.totalCompounded * 10000) / fees.totalFeesEarned : 0;
 
         emit UserPerformanceUpdate(
             user,

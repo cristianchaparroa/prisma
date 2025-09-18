@@ -149,7 +149,7 @@ contract FeeCollectionTest is Test, SimpleDeployers {
 
         // Verify fee calculation matches hook logic (use outgoing amount, not sum)
         uint256 manualFee = (swapAmount * FEE) / FEE_DENOMINATOR; // swapAmount is the outgoing amount
-        
+
         assertEq(expectedFee, manualFee, "Fee calculation should match hook logic (outgoing amount)");
 
         console.log("Swap fee collection verified (using outgoing amount logic)");
@@ -213,7 +213,7 @@ contract FeeCollectionTest is Test, SimpleDeployers {
         // In production, Charlie wouldn't receive fees
         // But with the current bypass, Charlie will receive fees from swaps
         console.log("Charlie has not activated strategy but will still receive fees due to bypass");
-        
+
         // This demonstrates the current testing behavior vs production behavior
         console.log("Production: Only users with active strategies receive fees");
         console.log("Current (testing): All users receive fees regardless of strategy activation");
@@ -221,7 +221,7 @@ contract FeeCollectionTest is Test, SimpleDeployers {
 
     function _calculateFeeFromDelta(BalanceDelta delta) internal view returns (uint256) {
         // Reproduce the hook's fee calculation logic (matches YieldMaximizerHook.calculateFeesFromSwap)
-        
+
         // Handle edge case: if delta is zero, no fees generated
         if (delta.amount0() == 0 && delta.amount1() == 0) {
             return 0;
