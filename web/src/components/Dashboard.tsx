@@ -4,6 +4,7 @@ import { Activity, TrendingUp, Users, DollarSign, Zap, Settings, AlertCircle, Ga
 import EnhancedHookListener from './Metrics';
 import type { DashboardMetrics, RealTimeEvent } from './Metrics';
 import { formatTokenAmount, getTokenInfo } from '../config/tokens';
+import { getPoolDescription, formatPoolTokenAmount } from '../config/pools';
 
 interface YieldMaximizerDashboardProps {
     hookListener: EnhancedHookListener | null;
@@ -44,6 +45,66 @@ const YieldMaximizerDashboard: React.FC<YieldMaximizerDashboardProps> = ({ hookL
         return result;
     }, [metrics, lastUpdateTime]);
 
+    // Format fees by token - shows breakdown by token type
+    const formatFeesByToken = (metrics: DashboardMetrics | null): string => {
+        // Reduced logging - only when we have multiple tokens
+        if (metrics?.feesByToken && Object.keys(metrics.feesByToken).length > 1) {
+            console.log('💰 Multi-token fees:', Object.keys(metrics.feesByToken).map(addr => 
+                metrics.feesByToken[addr]?.symbol || 'UNKNOWN'
+            ));
+        }
+
+        if (!metrics || !metrics.feesByToken || Object.keys(metrics.feesByToken).length === 0) {
+            return formatSmartTokenAmount(metrics ? Number(metrics.totalFeesCollected) : 0);
+        }
+
+        const tokenFees = Object.values(metrics.feesByToken)
+            .map(tokenFee => {
+                const amount = Number(tokenFee.amount) / Math.pow(10, tokenFee.decimals);
+                const formatted = amount < 0.000001 ? 
+                    amount.toExponential(3) : 
+                    amount.toFixed(6);
+                return `${formatted} ${tokenFee.symbol}`;
+            })
+            .join(' + ');
+
+        // Only log when fees are actually present
+        if (tokenFees && tokenFees !== "0.00") {
+            console.log('💰 Fee breakdown:', tokenFees);
+        }
+        return tokenFees || "0.00";
+    };
+
+    // Format compounded fees by token - shows breakdown by token type
+    const formatCompoundedByToken = (metrics: DashboardMetrics | null): string => {
+        // Reduced logging - only when we have multiple tokens
+        if (metrics?.compoundedByToken && Object.keys(metrics.compoundedByToken).length > 1) {
+            console.log('🔄 Multi-token compounded:', Object.keys(metrics.compoundedByToken).map(addr => 
+                metrics.compoundedByToken[addr]?.symbol || 'UNKNOWN'
+            ));
+        }
+
+        if (!metrics || !metrics.compoundedByToken || Object.keys(metrics.compoundedByToken).length === 0) {
+            return formatSmartTokenAmount(metrics ? Number(metrics.totalCompounded) : 0);
+        }
+
+        const compoundedTokens = Object.values(metrics.compoundedByToken)
+            .map(tokenCompounded => {
+                const amount = Number(tokenCompounded.amount) / Math.pow(10, tokenCompounded.decimals);
+                const formatted = amount < 0.000001 ? 
+                    amount.toExponential(3) : 
+                    amount.toFixed(6);
+                return `${formatted} ${tokenCompounded.symbol}`;
+            })
+            .join(' + ');
+
+        // Only log when compounded fees are actually present
+        if (compoundedTokens && compoundedTokens !== "0.00") {
+            console.log('🔄 Compounded breakdown:', compoundedTokens);
+        }
+        return compoundedTokens || "0.00";
+    };
+
     // Smart token formatter - detects token based on amount and context
     const formatSmartTokenAmount = (amount: number, tokenAddress?: string) => {
         if (amount === 0) return "0.00";
@@ -78,12 +139,14 @@ const YieldMaximizerDashboard: React.FC<YieldMaximizerDashboardProps> = ({ hookL
         }
     };
 
-    // Debug logging
-    console.log('🔍 Current metrics:', {
-        totalFeesCollected: systemMetrics.totalFeesCollected,
-        totalCompounded: systemMetrics.totalCompounded,
-        totalUsers: systemMetrics.totalUsers
-    });
+    // Essential dashboard metrics logging (reduced frequency)
+    if (systemMetrics.totalUsers > 0 && systemMetrics.totalFeesCollected > 0) {
+        console.log('📊 Dashboard Summary:', {
+            users: systemMetrics.totalUsers,
+            events: events.length,
+            connected: isConnected
+        });
+    }
 
     // Subscribe to hook listener events and metrics
     useEffect(() => {
@@ -166,7 +229,11 @@ const YieldMaximizerDashboard: React.FC<YieldMaximizerDashboardProps> = ({ hookL
         switch (event.name) {
             case 'FeesCollected':
                 const feeAmount = Number(event.args.amount || 0);
-                return `${event.args.user?.slice(0, 6)}...${event.args.user?.slice(-4)} earned ${formatSmartTokenAmount(feeAmount)} fees`;
+                const tokenAddress = event.args.token || event.tokenContext?.address;
+                const tokenDisplay = tokenAddress ? 
+                    formatTokenAmount(feeAmount, tokenAddress) : 
+                    formatSmartTokenAmount(feeAmount);
+                return `${event.args.user?.slice(0, 6)}...${event.args.user?.slice(-4)} earned ${tokenDisplay} fees`;
             case 'FeesCompounded':
                 const compoundAmount = Number(event.args.amount || 0);
                 return `${event.args.user?.slice(0, 6)}...${event.args.user?.slice(-4)} compounded ${formatSmartTokenAmount(compoundAmount)}`;
@@ -400,14 +467,14 @@ const YieldMaximizerDashboard: React.FC<YieldMaximizerDashboardProps> = ({ hookL
                 <StatCard
                     icon={DollarSign}
                     title="Total Fees Earned"
-                    value={formatSmartTokenAmount(systemMetrics.totalFeesCollected)}
+                    value={formatFeesByToken(metrics)}
                     subtitle="From swapping activity"
                     color="green"
                 />
                 <StatCard
                     icon={TrendingUp}
                     title="Fees Compounded"
-                    value={formatSmartTokenAmount(systemMetrics.totalCompounded)}
+                    value={formatCompoundedByToken(metrics)}
                     subtitle="Auto-reinvested"
                     color="blue"
                 />
@@ -497,14 +564,14 @@ const YieldMaximizerDashboard: React.FC<YieldMaximizerDashboardProps> = ({ hookL
                         {/* Key Stats */}
                         <div className="grid grid-cols-2 gap-4">
                             <div key={`fees-${lastUpdateTime}`} className="bg-blue-50 rounded-lg p-4">
-                                <div className="text-2xl font-bold text-blue-600">
-                                    {formatSmartTokenAmount(systemMetrics.totalFeesCollected)}
+                                <div className="text-lg font-bold text-blue-600">
+                                    {formatFeesByToken(metrics)}
                                 </div>
                                 <div className="text-sm text-blue-800">Fees Collected</div>
                             </div>
                             <div key={`compounds-${lastUpdateTime}`} className="bg-green-50 rounded-lg p-4">
-                                <div className="text-2xl font-bold text-green-600">
-                                    {formatSmartTokenAmount(systemMetrics.totalCompounded)}
+                                <div className="text-lg font-bold text-green-600">
+                                    {formatCompoundedByToken(metrics)}
                                 </div>
                                 <div className="text-sm text-green-800">Auto-Compounded</div>
                             </div>
@@ -549,6 +616,9 @@ const YieldMaximizerDashboard: React.FC<YieldMaximizerDashboardProps> = ({ hookL
                             {formatSmartTokenAmount(systemMetrics.totalFeesCollected - systemMetrics.totalCompounded)}
                         </div>
                         <div className="text-sm text-gray-600">pending compounding</div>
+                        <div className="text-xs text-gray-500 mt-1">
+                            (Total: {formatFeesByToken(metrics)})
+                        </div>
                     </div>
                 </div>
                 

@@ -62,14 +62,20 @@ export function formatTokenAmount(
     const numAmount = typeof amount === 'bigint' ? Number(amount) : Number(amount);
     const formattedAmount = numAmount / Math.pow(10, decimals);
     
-    // Format based on token type
+    // Format based on token type with higher precision for tiny amounts
     let formatted: string;
     if (decimals === 6) { // USDC, USDT
-        formatted = formattedAmount.toFixed(6);
+        formatted = formattedAmount < 0.000001 ? 
+            formattedAmount.toExponential(3) : 
+            formattedAmount.toFixed(6);
     } else if (decimals === 8) { // WBTC
-        formatted = formattedAmount.toFixed(8);
+        formatted = formattedAmount < 0.00000001 ? 
+            formattedAmount.toExponential(3) : 
+            formattedAmount.toFixed(8);
     } else { // 18 decimals (ETH, DAI)
-        formatted = formattedAmount.toFixed(6);
+        formatted = formattedAmount < 0.000001 ? 
+            formattedAmount.toExponential(3) : 
+            formattedAmount.toFixed(6);
     }
     
     return showSymbol ? `${formatted} ${symbol}` : formatted;

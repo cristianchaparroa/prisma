@@ -17,7 +17,7 @@ function App() {
       try {
         const listener = new EnhancedHookListener({
           rpcUrl: 'http://127.0.0.1:8545',
-          hookAddress: '0xB1A8DEBF6c94316F22188B31F11A5109E6a79540',
+          hookAddress: '0xf9Ce2CDc991DF6Ded7201003554864936D909540',
           poolManagerAddress: '0x000000000004444c5dc75cB358380D2e3dE08A90',
           universalRouterAddress: '0x66a9893cc07d91d95644aedd05d03f95e1dba8af',
         });

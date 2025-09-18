@@ -1,12 +1,21 @@
 import { createPublicClient, http, decodeEventLog, parseAbiItem, webSocket } from 'viem';
 import { anvil } from 'viem/chains';
 import { YieldMaximizerHookABI } from '../abi/YieldMaximizerHook.abi';
+import { getTokenInPool, formatPoolTokenAmount, discoverPoolFromEvent, discoverPoolFromTokens, getPoolConfig } from '../config/pools';
+import { getTokenInfo } from '../config/tokens';
 
 interface HookEventConfig {
     rpcUrl: string;
     hookAddress: string;
     poolManagerAddress: string;
     universalRouterAddress: string;
+}
+
+interface TokenFees {
+    address: string;
+    symbol: string;
+    amount: bigint;
+    decimals: number;
 }
 
 interface DashboardMetrics {
@@ -20,6 +29,8 @@ interface DashboardMetrics {
     poolDistribution: Record<string, number>;
     userPerformance: Record<string, UserPerformance>;
     systemHealth: SystemHealth;
+    feesByToken: Record<string, TokenFees>; // Track fees by token address
+    compoundedByToken: Record<string, TokenFees>; // Track compounded fees by token address
 }
 
 interface UserPerformance {
@@ -66,6 +77,8 @@ class EnhancedHookListener {
     private metricsCallbacks: ((metrics: DashboardMetrics) => void)[] = [];
     private eventCallbacks: ((event: RealTimeEvent) => void)[] = [];
     private performanceInterval?: NodeJS.Timeout;
+    private activeUsers: Set<string> = new Set(); // Track users who have received fees
+    private poolTracker: Map<string, {token0?: string, token1?: string, discovered: boolean}> = new Map(); // Track partial pool discoveries
 
     constructor(config: HookEventConfig) {
         // Use WebSocket for real-time updates
@@ -100,7 +113,9 @@ class EnhancedHookListener {
                 batchEfficiency: 0,
                 networkCongestion: 'low',
                 systemUptime: 100
-            }
+            },
+            feesByToken: {}, // Initialize empty token fees tracking
+            compoundedByToken: {} // Initialize empty compounded fees tracking
         };
     }
 
@@ -116,7 +131,7 @@ class EnhancedHookListener {
     async startRealtimeMonitoring(): Promise<void> {
         if (this.isListening) return;
 
-        console.log('🚀 Starting enhanced real-time monitoring...');
+        console.log('🚀 YieldMaximizer monitoring started');
 
         // Initialize with historical data
         await this.loadHistoricalData();
@@ -128,16 +143,14 @@ class EnhancedHookListener {
         this.startPerformanceTracking();
 
         this.isListening = true;
-        console.log('✅ Enhanced real-time monitoring started!');
+        console.log('✅ Monitoring active!');
     }
 
     private async loadHistoricalData(): Promise<void> {
         try {
             const currentBlock = await this.client.getBlockNumber();
-            const blockRange = 10n; // Reduced to 10 blocks for free tier compatibility
+            const blockRange = 100n; // Increased to catch more historical events
             const fromBlock = currentBlock - blockRange;
-
-            console.log(`📊 Loading historical events from blocks ${fromBlock} to ${currentBlock}...`);
 
             const logs = await this.client.getLogs({
                 address: this.hookAddress as `0x${string}`,
@@ -145,7 +158,9 @@ class EnhancedHookListener {
                 toBlock: currentBlock
             });
 
-            console.log(`📊 Found ${logs.length} historical events in last ${blockRange} blocks`);
+            if (logs.length > 0) {
+                console.log(`📊 Found ${logs.length} historical events`);
+            }
 
             for (const log of logs) {
                 try {
@@ -166,11 +181,17 @@ class EnhancedHookListener {
                 }
             }
 
-            console.log(`✅ Loaded historical data: ${this.eventHistory.length} events`);
+            // Update final user count after processing all historical events
+            this.metrics.totalUsers = this.activeUsers.size;
             
-            // Initialize with some default metrics if no historical data
-            if (this.eventHistory.length === 0) {
-                console.log('ℹ️  No historical events found, starting with clean metrics');
+            if (this.eventHistory.length > 0) {
+                const eventCounts = this.eventHistory.reduce((acc, event) => {
+                    acc[event.name] = (acc[event.name] || 0) + 1;
+                    return acc;
+                }, {} as Record<string, number>);
+                
+                console.log(`✅ Loaded ${this.eventHistory.length} events:`, eventCounts);
+                console.log(`👥 ${this.metrics.totalUsers} active users, 💰 ${this.metrics.totalFeesCollected.toString()} total fees, 🔄 ${this.metrics.totalCompounded.toString()} compounded`);
             }
             
         } catch (error) {
@@ -300,10 +321,22 @@ class EnhancedHookListener {
     }
 
     private handleRealTimeEvent(event: RealTimeEvent): void {
-        console.log(`🎯 Real-time ${event.name} (Impact: ${event.impact})`, event.args);
+        // Only log important events
+        if (['FeesCollected', 'FeesCompounded', 'BatchExecuted'].includes(event.name)) {
+            console.log(`🎯 ${event.name}`, event.args);
+        }
+        
+        // Special logging for compounding events
+        if (event.name === 'FeesCompounded') {
+            console.log(`🔄 COMPOUNDING EVENT RECEIVED:`, {
+                user: event.args?.user,
+                amount: event.args?.amount,
+                blockNumber: event.blockNumber,
+                transactionHash: event.transactionHash
+            });
+        }
 
         // Update metrics
-        console.log('⚙️ About to update metrics for event:', event.name);
         this.updateMetricsFromEvent(event);
 
         // Store event
@@ -314,7 +347,6 @@ class EnhancedHookListener {
         this.updatePoolAnalytics(event);
 
         // Broadcast to subscribers
-        console.log('📤 Broadcasting event and metrics...');
         this.broadcastEvent(event);
         this.broadcastMetrics();
     }
@@ -327,23 +359,88 @@ class EnhancedHookListener {
                 const feeAmount = BigInt(event.args?.amount || 0);
                 const previousTotal = this.metrics.totalFeesCollected;
                 this.metrics.totalFeesCollected += feeAmount;
-                console.log('💰 FeesCollected processed:', {
-                    amount: event.args?.amount,
-                    feeAmountBigInt: feeAmount.toString(),
-                    previousTotal: previousTotal.toString(),
-                    newTotal: this.metrics.totalFeesCollected.toString(),
-                    user: event.args?.user
-                });
-                this.updateUserPerformance(event.args?.user, {
+                
+                // Extract token information from enhanced event
+                const user = event.args?.user;
+                const token = event.args?.token;
+                const isToken0 = event.args?.isToken0;
+                const poolId = event.args?.poolId;
+
+                // Dynamic pool discovery
+                this.discoverPoolFromFeesEvent(poolId, token, isToken0);
+                
+                // Track fees by token
+                if (token && token !== '0x0000000000000000000000000000000000000000') {
+                    const tokenInfo = getTokenInfo(token);
+                    if (tokenInfo) {
+                        if (!this.metrics.feesByToken[token]) {
+                            this.metrics.feesByToken[token] = {
+                                address: token,
+                                symbol: tokenInfo.symbol,
+                                amount: 0n,
+                                decimals: tokenInfo.decimals
+                            };
+                        }
+                        this.metrics.feesByToken[token].amount += feeAmount;
+                    }
+                }
+                
+                // Track active users based on fee collection
+                if (user && !this.activeUsers.has(user)) {
+                    this.activeUsers.add(user);
+                    this.metrics.totalUsers = this.activeUsers.size;
+                    console.log(`👤 New user active (${this.metrics.totalUsers} total)`);
+                }
+                
+                // Format amount for context
+                const poolTokenInfo = poolId ? getTokenInPool(poolId, isToken0) : null;
+                const formattedAmount = poolId && poolTokenInfo ? 
+                    formatPoolTokenAmount(feeAmount, poolId, isToken0) : 
+                    `${feeAmount.toString()} tokens`;
+                
+                this.updateUserPerformance(user, {
                     totalFeesEarned: feeAmount
                 });
+                
+                // Store enhanced token context for dashboard use
+                event.tokenContext = {
+                    address: token,
+                    isToken0: isToken0,
+                    poolId: poolId,
+                    formattedAmount: formattedAmount
+                };
                 break;
 
             case 'FeesCompounded':
                 const compoundedAmount = BigInt(event.args?.amount || 0);
+                const previousCompounded = this.metrics.totalCompounded;
                 this.metrics.totalCompounded += compoundedAmount;
                 // Compounding adds liquidity back to the pool, so it increases TVL
                 this.metrics.totalTVL += compoundedAmount;
+                
+                // Track compounded fees by token (similar to fee collection)
+                const compoundToken = event.args?.token;
+                const compoundIsToken0 = event.args?.isToken0;
+                let tokenSymbol = 'tokens';
+                
+                if (compoundToken && compoundToken !== '0x0000000000000000000000000000000000000000') {
+                    const tokenInfo = getTokenInfo(compoundToken);
+                    if (tokenInfo) {
+                        tokenSymbol = tokenInfo.symbol;
+                        if (!this.metrics.compoundedByToken[compoundToken]) {
+                            this.metrics.compoundedByToken[compoundToken] = {
+                                address: compoundToken,
+                                symbol: tokenInfo.symbol,
+                                amount: 0n,
+                                decimals: tokenInfo.decimals
+                            };
+                        }
+                        this.metrics.compoundedByToken[compoundToken].amount += compoundedAmount;
+                    }
+                }
+                
+                console.log(`🔄 FeesCompounded: ${compoundedAmount.toString()} ${tokenSymbol} (Total: ${previousCompounded.toString()} → ${this.metrics.totalCompounded.toString()})`);
+                
                 this.updateUserPerformance(event.args?.user, {
                     totalCompounded: compoundedAmount
                 });
@@ -362,8 +459,16 @@ class EnhancedHookListener {
                 break;
 
             case 'StrategyActivated':
-                this.metrics.totalUsers++;
+                // Note: totalUsers is now tracked via FeesCollected events
+                // Only track strategy activations separately
                 this.metrics.activeStrategies++;
+                
+                // If user already collected fees, they're already counted
+                // If not, they'll be counted when they first receive fees
+                const strategyUser = event.args?.user;
+                if (strategyUser && !this.activeUsers.has(strategyUser)) {
+                    console.log('👤 User activated strategy before collecting fees:', strategyUser);
+                }
                 break;
 
             case 'StrategyDeactivated':
@@ -508,11 +613,7 @@ class EnhancedHookListener {
     }
 
     private broadcastMetrics(): void {
-        console.log('📡 Broadcasting metrics to', this.metricsCallbacks.length, 'subscribers:', {
-            totalFeesCollected: this.metrics.totalFeesCollected.toString(),
-            totalCompounded: this.metrics.totalCompounded.toString(),
-            totalUsers: this.metrics.totalUsers
-        });
+        // Broadcast metrics silently
         this.metricsCallbacks.forEach(callback => {
             try {
                 callback(this.metrics);
@@ -522,16 +623,37 @@ class EnhancedHookListener {
         });
     }
 
+    // Dynamic pool discovery from fees events
+    private discoverPoolFromFeesEvent(poolId: string, tokenAddress: string, isToken0: boolean): void {
+        if (!poolId || !tokenAddress) return;
+
+        // Track this token for the pool
+        const currentTracker = this.poolTracker.get(poolId) || { discovered: false };
+        
+        if (isToken0) {
+            currentTracker.token0 = tokenAddress;
+        } else {
+            currentTracker.token1 = tokenAddress;
+        }
+
+        // If we have both tokens and haven't discovered this pool yet, create the pool config
+        if (currentTracker.token0 && currentTracker.token1 && !currentTracker.discovered) {
+            const discoveredPool = discoverPoolFromTokens(poolId, currentTracker.token0, currentTracker.token1);
+            if (discoveredPool) {
+                currentTracker.discovered = true;
+                console.log(`✅ Pool discovered: ${discoveredPool.description}`);
+            }
+        } else if (!getPoolConfig(poolId)) {
+            // Try discovery with current known token
+            discoverPoolFromEvent(poolId, tokenAddress, isToken0);
+        }
+
+        this.poolTracker.set(poolId, currentTracker);
+    }
+
     // Public API methods for dashboard
     getMetrics(): DashboardMetrics {
-        const result = { ...this.metrics };
-        console.log('📋 getMetrics() called, returning:', {
-            totalFeesCollected: result.totalFeesCollected.toString(),
-            totalCompounded: result.totalCompounded.toString(),
-            totalUsers: result.totalUsers,
-            activeStrategies: result.activeStrategies
-        });
-        return result;
+        return { ...this.metrics };
     }
 
     getPoolAnalytics(): PoolAnalytics[] {
