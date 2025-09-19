@@ -244,8 +244,6 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-./scripts/local/05_fund-accounts-manual.sh
-
 print_success "Infrastructure deployed successfully"
 
 
@@ -255,3 +253,4 @@ echo "#### --> Validations... <--- #####"
 ./scripts/validations/03_validate_funds.sh
 ./scripts/validations/03_validate_token_funds.sh
 
+./scripts/validations/04_validate-liquidity.sh

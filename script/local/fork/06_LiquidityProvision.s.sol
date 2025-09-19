@@ -18,12 +18,12 @@ import {IAllowanceTransfer} from "permit2/src/interfaces/IAllowanceTransfer.sol"
  * sync/settle logic internally via the command system.
  */
 contract LiquidityAdder {
-    IPositionManager public immutable positionManager;
-    IAllowanceTransfer public immutable permit2;
+    IPositionManager public immutable POSITION_MANAGER;
+    IAllowanceTransfer public immutable PERMIT2;
 
     constructor(address _positionManager, address _permit2) {
-        positionManager = IPositionManager(_positionManager);
-        permit2 = IAllowanceTransfer(_permit2);
+        POSITION_MANAGER = IPositionManager(_positionManager);
+        PERMIT2 = IAllowanceTransfer(_permit2);
     }
 
     function mintLiquidity(
@@ -52,7 +52,7 @@ contract LiquidityAdder {
         uint256 deadline = block.timestamp + 3600;
 
         // Execute the position creation (no ETH needed for ERC-20 tokens)
-        positionManager.modifyLiquidities(abi.encode(actions, params), deadline);
+        POSITION_MANAGER.modifyLiquidities(abi.encode(actions, params), deadline);
     }
 }
 
@@ -66,6 +66,8 @@ struct PoolConfig {
     address token1;
     uint128 amount0;
     uint128 amount1;
+    int24 tickLower;
+    int24 tickUpper;
     string name;
 }
 
@@ -74,16 +76,14 @@ contract LiquidityProvision is Script {
         uint256 deployerKey = vm.envUint("ANVIL_PRIVATE_KEY");
         address positionManagerAddr = vm.envAddress("POSITION_MANAGER");
         address permit2Addr = vm.envAddress("PERMIT2");
-        address tokenUSDC = vm.envAddress("TOKEN_USDC");
-        address tokenWETH = vm.envAddress("TOKEN_WETH");
-        address tokenDAI = vm.envAddress("TOKEN_DAI");
-        address tokenWBTC = vm.envAddress("TOKEN_WBTC");
+        address tokenUsdc = vm.envAddress("TOKEN_USDC");
+        address tokenWeth = vm.envAddress("TOKEN_WETH");
+        address tokenDai = vm.envAddress("TOKEN_DAI");
+        address tokenWbtc = vm.envAddress("TOKEN_WBTC");
         address hookAddr = vm.envAddress("HOOK_ADDRESS");
 
         uint24 fee = 3000;
         int24 tickSpacing = 60;
-        int24 tickLower = -120;
-        int24 tickUpper = 120;
 
         vm.startBroadcast(deployerKey);
         address deployer = vm.addr(deployerKey);
@@ -94,10 +94,10 @@ contract LiquidityProvision is Script {
 
         // Set up Permit2 approvals for ALL tokens
         address[] memory tokens = new address[](4);
-        tokens[0] = tokenUSDC;
-        tokens[1] = tokenWETH;
-        tokens[2] = tokenDAI;
-        tokens[3] = tokenWBTC;
+        tokens[0] = tokenUsdc;
+        tokens[1] = tokenWeth;
+        tokens[2] = tokenDai;
+        tokens[3] = tokenWbtc;
 
         for (uint256 i = 0; i < tokens.length; i++) {
             IERC20(tokens[i]).approve(permit2Addr, type(uint256).max);
@@ -105,42 +105,50 @@ contract LiquidityProvision is Script {
         }
         console2.log("Permit2 approvals set for all tokens");
 
-        // Define pool configurations with appropriate amounts
+        // Define pool configurations with appropriate amounts AND tick ranges
         PoolConfig[] memory pools = new PoolConfig[](4);
 
-        // USDC/WETH pool
+        // USDC/WETH pool - normal tick range
         pools[0] = PoolConfig({
-            token0: tokenUSDC,
-            token1: tokenWETH,
+            token0: tokenUsdc,
+            token1: tokenWeth,
             amount0: 10_000e6, // 10,000 USDC
             amount1: 5e18, // 5 WETH
+            tickLower: -120,
+            tickUpper: 120,
             name: "USDC/WETH"
         });
 
-        // DAI/WETH pool
+        // DAI/WETH pool - normal tick range
         pools[1] = PoolConfig({
-            token0: tokenDAI,
-            token1: tokenWETH,
+            token0: tokenDai,
+            token1: tokenWeth,
             amount0: 10_000e18, // 10,000 DAI
             amount1: 5e18, // 5 WETH
+            tickLower: -120,
+            tickUpper: 120,
             name: "DAI/WETH"
         });
 
-        // DAI/USDC pool
+        // DAI/USDC pool - WIDE tick range for extreme price
         pools[2] = PoolConfig({
-            token0: tokenDAI,
-            token1: tokenUSDC,
-            amount0: 10_000e18, // 10,000 DAI
-            amount1: 10_000e6, // 10,000 USDC
+            token0: tokenDai,
+            token1: tokenUsdc,
+            amount0: 100_000e18, // Increase to 100,000 DAI
+            amount1: 100_000e6, // Increase to 100,000 USDC
+            tickLower: -120,
+            tickUpper: 120,
             name: "DAI/USDC"
         });
 
-        // WBTC/WETH pool
+        // WBTC/WETH pool - normal tick range
         pools[3] = PoolConfig({
-            token0: tokenWBTC,
-            token1: tokenWETH,
+            token0: tokenWbtc,
+            token1: tokenWeth,
             amount0: 1e8, // 1 WBTC
             amount1: 15e18, // 15 WETH (approx BTC price ratio)
+            tickLower: -120,
+            tickUpper: 120,
             name: "WBTC/WETH"
         });
 
@@ -170,8 +178,8 @@ contract LiquidityProvision is Script {
 
             params[0] = abi.encode(
                 key,
-                tickLower,
-                tickUpper,
+                poolConfig.tickLower, // Use pool-specific tick range
+                poolConfig.tickUpper, // Use pool-specific tick range
                 1000000, // 1M liquidity units per pool
                 amount0Max,
                 amount1Max,
