@@ -1,8 +1,5 @@
 # Prisma
 
-# Prisma YieldMaximizer
-## Auto-Compounding for Uniswap V4
-
 ---
 
 ## 🚨 The Problem
@@ -20,7 +17,7 @@
 
 ## 💡 Our Solution
 
-**Prisma YieldMaximizer = First native auto-compounder for Uniswap V4**
+**Prisma YieldMaximizer = native auto-compounder for Uniswap V4**
 
 ### What it does:
 - **Automatically compounds** trading fees back into LP positions
@@ -43,14 +40,13 @@
 - Comprehensive testing with 9 user scenarios
 - Multi-token support (USDC, WETH, DAI, WBTC)
 
-### ✅ **First-Mover Advantage**
-- First auto-compounder built for Uniswap V4 hooks
+### ✅ **Mover Advantage**
+- Auto-compounder built for Uniswap V4 hooks
 - Captures entire emerging market
 - Built for the future of DeFi infrastructure
 
 ### ✅ **Clear Value Proposition**
 - Users earn more with zero effort
-- Transparent 2% performance fee model
 - ROI visible from day one
 
 ---
@@ -60,10 +56,6 @@
 - **$100B+ DeFi TVL** needs yield optimization
 - **40% annual growth** in DeFi market size
 - **2M+ liquidity providers** seeking better returns
-
-**Projections:**
-- Month 1: $1M TVL → $500/month revenue
-- Year 1: $100M TVL → $50K/month revenue
 
 ---
 
