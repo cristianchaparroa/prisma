@@ -1,36 +1,93 @@
-# Prisma - YieldMaximizerHook Environment
+# Prisma
 
-🎯 **Complete Interactive Environment for Uniswap V4 Yield-Maximizing Auto-Compounder Hook**
-
-This repository contains a fully deployed local Uniswap V4 environment with the YieldMaximizerHook integrated, providing automated fee compounding and yield optimization for liquidity providers.
+# Prisma YieldMaximizer
+## Auto-Compounding for Uniswap V4
 
 ---
 
-## 🏗️ **Current Status** ✅
+## 🚨 The Problem
 
-**Successfully Deployed:**
-- ✅ Uniswap V4 Infrastructure (PoolManager, PositionManager, etc.)
-- ✅ Real Mainnet Tokens (USDC, WETH, DAI, WBTC) via fork
-- ✅ YieldMaximizerHook deployed and integrated
-- ✅ 4 Hook-enabled liquidity pools with initial liquidity
-- ✅ Complete local Anvil environment running
+**DeFi users are losing money due to manual compounding inefficiencies:**
+
+- Individual compounding costs $5-50+ in gas fees
+- Most users compound monthly instead of optimal daily/weekly
+- Complex yield strategies require constant monitoring
+- $100B+ DeFi TVL earning suboptimal returns
+
+**Real Impact:** A $10K position loses $400-800 annually due to these inefficiencies.
+
+---
+
+## 💡 Our Solution
+
+**Prisma YieldMaximizer = First native auto-compounder for Uniswap V4**
+
+### What it does:
+- **Automatically compounds** trading fees back into LP positions
+- **Batches multiple users** together to reduce gas costs
+- **Set-and-forget** experience - activate once, earn forever
+- **Real-time optimization** based on market conditions
+
+### Why it works:
+- Built directly into Uniswap V4 using hooks architecture
+- No external dependencies or complex integrations
+- Network effects: more users = better efficiency for everyone
+
+---
+
+## 🎯 What Makes Us Unique
+
+### ✅ **Already Built & Working**
+- Complete smart contract implementation
+- Live dashboard with real-time blockchain events
+- Comprehensive testing with 9 user scenarios
+- Multi-token support (USDC, WETH, DAI, WBTC)
+
+### ✅ **First-Mover Advantage**
+- First auto-compounder built for Uniswap V4 hooks
+- Captures entire emerging market
+- Built for the future of DeFi infrastructure
+
+### ✅ **Clear Value Proposition**
+- Users earn more with zero effort
+- Transparent 2% performance fee model
+- ROI visible from day one
+
+---
+
+## 📊 Market Opportunity
+
+- **$100B+ DeFi TVL** needs yield optimization
+- **40% annual growth** in DeFi market size
+- **2M+ liquidity providers** seeking better returns
+
+**Projections:**
+- Month 1: $1M TVL → $500/month revenue
+- Year 1: $100M TVL → $50K/month revenue
+
+---
+
+## 🚀 What We've Built
+
+### **Technical Achievement:**
+- ✅ Native Uniswap V4 hook implementation
+- ✅ Batching system for gas optimization
+- ✅ Real-time event monitoring dashboard
+- ✅ Multi-pool, multi-token support
+- ✅ Complete local testing environment
+
+### **Live Demo Available:**
+Our working implementation shows actual fee collection, compounding, and gas optimization in real-time.
+
+---
+
+## Local environment
 
 **Environment Details:**
 - **Anvil RPC**: `http://localhost:8545`
 - **Chain ID**: `31337`
 - **Mainnet Fork**: Uses real mainnet contracts and whale funding
 - **Test Accounts**: 9 funded accounts for diverse trading scenarios
-
----
-
-## 📊 **Project Overview**
-
-The **Yield-Maximizing Auto-Compounder Hook** automatically optimizes liquidity provider returns by:
-
-- **Automated Fee Compounding**: Eliminates manual compounding inefficiencies
-- **Gas Optimization**: Batched transactions reduce costs by 70-85%
-- **Yield Maximization**: Cross-protocol farming increases returns by 15-40%
-- **Set-and-Forget Experience**: Zero maintenance required from users
 
 ---
 
@@ -43,6 +100,14 @@ The **Yield-Maximizing Auto-Compounder Hook** automatically optimizes liquidity 
    - Alchemy: https://alchemy.com
    - Infura: https://infura.io  
    - Public: https://ethereum.publicnode.com
+   
+
+### Get the code
+```bash
+git clone git@github.com:cristianchaparroa/prisma.git
+cd prisma
+```
+
 
 ### **Create the infrastructure**
 
@@ -58,12 +123,17 @@ The **Yield-Maximizing Auto-Compounder Hook** automatically optimizes liquidity 
 
 This script automatically:
 - Starts Anvil mainnet fork at block ~19M+
-- Deploys Uniswap V4 infrastructure 
+- Deploys Uniswap V4 infrastructure
 - Funds 9 test accounts from mainnet whale addresses
 - Deploys YieldMaximizerHook
 - Creates 4 hook-enabled liquidity pools (USDC/WETH, USDC/DAI, WETH/DAI, WBTC/WETH)
 - Provides initial liquidity to all pools
 ---
+
+### Get the Hook address
+Once it is done, get the Hook address from the `.env` file. Open the `web/src/App.tsx` file and set it
+in the event listener. 
+
 
 ## 🎭 **Simulation Details**
 
@@ -81,16 +151,16 @@ bun install
 bun dev
 ```
 
+Open the web application 
+```
+http://localhost:5173/
+```
+
 ### 2. Execute the simulation
 
 ```bash
 ./scripts/local/execute-simulation.sh
 ```
-
-### 3. Web listener
-Once The simulation is executed you could start to see the event listener in the browser 
-printing information about the simulation.
-
 
 
 
